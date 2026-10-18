@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Image Translator (nama sementara)",
+  "version": "0.1.0",
+  "description": "Terjemahkan teks pada gambar komik langsung di halaman.",
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Image Translator", "default_popup": "popup.html" },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

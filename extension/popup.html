@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Image Translator</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<main class="pop">
+  <header class="hd">
+    <span class="lg">T</span>Image Translator
+    <!-- Tempat foto profil Google. Sistem akun belum ada, jadi masih ikon umum. -->
+    <span class="av" role="img" aria-label="Belum ada akun (mode uji)" title="Belum ada akun (mode uji)">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="11" r="5" fill="var(--avatar-fg)"/><path d="M4 27c1-6.5 5-8.5 10-8.5s9 2 10 8.5z" fill="var(--avatar-fg)"/></svg>
+    </span>
+  </header>
+
+  <!-- Credit mingguan: selalu tampil di atas -->
+  <section>
+    <div class="row"><span class="lbl">Credit mingguan</span><span class="lbl strong" id="creditText">… / …</span></div>
+    <div class="bar" id="creditBar"><i></i></div>
+  </section>
+
+  <!-- Tampilan utama: pengaturan -->
+  <section class="view" id="vMain">
+    <div class="wrap" data-key="src">
+      <span class="lbl">Bahasa asal</span>
+      <button class="sel" type="button" aria-haspopup="listbox"><span class="val"></span><span class="caret">▾</span></button>
+      <div class="dd" role="listbox" hidden></div>
+    </div>
+    <div class="wrap" data-key="tgt">
+      <span class="lbl">Bahasa tujuan</span>
+      <button class="sel" type="button" aria-haspopup="listbox"><span class="val"></span><span class="caret">▾</span></button>
+      <div class="dd" role="listbox" hidden></div>
+    </div>
+    <div class="wrap" data-key="model">
+      <span class="lbl">Model terjemahan</span>
+      <button class="sel" type="button" aria-haspopup="listbox"><span class="val"></span><span class="caret">▾</span></button>
+      <div class="dd" role="listbox" hidden></div>
+    </div>
+    <div class="saved" id="saved" aria-live="polite"></div>
+    <button class="btn ghost premium" type="button">Upgrade ke Premium</button>
+    <div class="note c" id="resetNote"></div>
+  </section>
+
+  <!-- Credit habis -->
+  <section class="view" id="vHabis" hidden>
+    <div class="ico amber">!</div>
+    <h2 class="c">Credit minggu ini habis</h2>
+    <div class="note c" id="habisNote"></div>
+    <button class="btn premium" type="button">Lihat paket Premium</button>
+    <button class="btn ghost" type="button" id="btnTutup">Tutup</button>
+  </section>
+
+  <!-- Pengguna Free memilih model Advanced -->
+  <section class="view" id="vAdv" hidden>
+    <div class="ico amber">★</div>
+    <h2 class="c">Model Advanced khusus Premium</h2>
+    <div class="note c">Hasil lebih akurat untuk teks sulit dan tulisan tangan. Berlangganan untuk memakainya.</div>
+    <button class="btn premium" type="button">Lihat paket Premium</button>
+    <button class="btn ghost" type="button" id="btnStandar">Tetap pakai Standar</button>
+  </section>
+
+  <div class="note c info" id="msg" aria-live="polite"></div>
+  <div class="tos">Mode uji: belum ada akun. Credit disimpan di browser ini.</div>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

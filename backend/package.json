@@ -1,0 +1,17 @@
+{
+  "name": "image-translator-backend",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Backend Image Translator: OCR + Gemini",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
