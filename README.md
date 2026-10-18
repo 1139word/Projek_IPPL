@@ -19,3 +19,5 @@ Cara menjalankan lengkap: lihat `docs/menjalankan.md`.
 3. Buka halaman yang memuat gambar besar, arahkan kursor ke gambar, lalu klik tombol **文A**.
 
 Untuk mencoba tampilan tanpa server, ubah `MOCK = true` di `extension/background.js`; hasil terjemahan akan berupa contoh.
+
+link Youtube: https://youtu.be/jdkz8qmGDmw 
