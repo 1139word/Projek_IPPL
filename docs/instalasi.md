@@ -61,7 +61,7 @@ Di folder proyek:
 ```
 node scripts/cek-lingkungan.js
 ```
-Tanda ✓ berarti siap, ✗ belum terpasang, – opsional. Kirim hasilnya ke Claude jika ada yang merah.
+Tanda ✓ berarti siap, ✗ belum terpasang.
 
 ## Menjalankan extension (tahap 1)
 Lihat `README.md`: Load unpacked, pilih folder `extension/`.
