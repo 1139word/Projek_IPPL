@@ -28,9 +28,11 @@ Catatan versi: halaman resmi saat dicek (5 Okt 2026) menampilkan Node.js 24 seba
 2. Buka Command Prompt baru, cek: `node --version` dan `npm --version`
 
 ## 3. MySQL
-1. Unduh **MySQL Installer** dari https://dev.mysql.com/downloads/installer/ dan pilih MySQL Server seri **LTS** (8.4 atau 9.7).
-2. Saat konfigurasi, buat kata sandi untuk pengguna `root` dan **catat**. Biarkan port 3306.
-3. Pastikan perintah `mysql --version` jalan. Jika tidak, tambahkan folder `bin` MySQL ke PATH.
+1. Buka https://dev.mysql.com/downloads/mysql/ (MySQL Community Server). Jangan memakai halaman "MySQL Installer": alat itu berhenti di seri 8.0.
+2. Pilih versi seri **8.4 LTS** yang terbaru, sistem operasi Microsoft Windows, lalu unduh **Windows (x86, 64-bit), MSI Installer**. Ajakan login akun Oracle boleh dilewati ("No thanks, just start my download").
+3. Pasang dengan tipe **Typical**, lalu jalankan **MySQL Configurator** di akhir instalasi: pilih *Development Computer*, biarkan port 3306, dan biarkan MySQL dipasang sebagai Windows Service.
+4. Buat kata sandi untuk pengguna `root` dan **catat**.
+5. Pastikan perintah `mysql --version` jalan. Jika tidak, tambahkan folder `C:\Program Files\MySQL\MySQL Server 8.4\bin` ke PATH.
 
 ## 4. Python
 1. Unduh Python 3.12 dari https://www.python.org/downloads/windows/ lalu pasang. **Centang "Add python.exe to PATH".**
