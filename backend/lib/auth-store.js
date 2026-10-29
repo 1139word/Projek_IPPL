@@ -31,6 +31,16 @@ const userStore = {
     return res.affectedRows === 1;
   },
 
+  // Kurangi credit hanya bila masih cukup. Dicek dan dikurangi dalam SATU perintah UPDATE,
+  // jadi tidak ada celah di antara "baca sisa" dan "tulis sisa baru" (race condition).
+  async useCredit(userId, cost) {
+    const [res] = await pool.query(
+      'UPDATE users SET credit_left = credit_left - ? WHERE id = ? AND credit_left >= ?',
+      [cost, userId, cost]
+    );
+    return res.affectedRows === 1;
+  },
+
   async insertSession({ tokenHash, userId, expiresAt }) {
     await pool.query('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [tokenHash, userId, expiresAt]);
   },

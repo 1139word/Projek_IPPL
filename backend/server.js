@@ -1,5 +1,5 @@
-// Backend Image Translator: endpoint penerjemahan dan akun (login Google).
-// Credit per akun dan Premium menyusul di tahap berikutnya.
+// Backend Image Translator: endpoint penerjemahan, akun (login Google), dan credit per akun.
+// Pembayaran Premium menyusul di tahap berikutnya.
 //
 // Menjalankan:  npm start   (membaca konfigurasi dari file .env)
 
@@ -8,6 +8,7 @@ const { translateImage } = require('./lib/pipeline');
 const { loginWithGoogle, userFromSession, logout, publicUser } = require('./lib/auth');
 const { userStore } = require('./lib/auth-store');
 const { verifyGoogleToken } = require('./lib/google');
+const { checkCredit, chargeCredit } = require('./lib/credit');
 
 const app = express();
 app.use(express.json({ limit: '25mb' })); // gambar dikirim sebagai base64, jadi ukurannya bisa besar
@@ -39,8 +40,8 @@ function kirimGagal(res, e) {
   res.status(e.status || 500).json({ code, message });
 }
 
-// Middleware: hanya meneruskan permintaan yang membawa token sesi sah. Pengguna disimpan di req.user.
-// Belum dipasang di /api/translate; dipasang bersamaan dengan tombol login di extension.
+// Middleware: hanya meneruskan permintaan yang membawa token sesi sah. Pengguna disimpan di req.user
+// (credit-nya sudah diisi ulang bila sudah lewat seminggu).
 async function requireLogin(req, res, next) {
   try {
     const user = await userFromSession(bearerToken(req), { store: userStore });
@@ -75,15 +76,19 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 });
 
-// ---- Penerjemahan ----
+// ---- Penerjemahan (UC-01) ----
 
-app.post('/api/translate', async (req, res) => {
-  const { image, src, tgt, model } = req.body || {};
+// Wajib login. Credit dicek sebelum OCR, lalu dipotong hanya bila terjemahan berhasil.
+app.post('/api/translate', requireLogin, async (req, res) => {
+  const { image, src, tgt, model = 'std' } = req.body || {};
   try {
+    checkCredit(req.user, model);
     const result = await translateImage({ image, src, tgt, model });
+    const user = await chargeCredit(req.user, model, { store: userStore });
     const m = result.meta;
-    console.log(`OK  ${m.balloons} balon | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt}`);
-    res.json(result);
+    console.log(`OK  ${m.balloons} balon | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt} | ${user.email} sisa ${user.credit_left}`);
+    // Sisa credit ikut dikirim supaya popup langsung diperbarui tanpa memanggil /api/me.
+    res.json({ ...result, credit: publicUser(user).credit });
   } catch (e) {
     const status = e.status || (e.code === 'BAD_IMAGE' ? 400 : 502);
     console.log(`GAGAL [${e.code || 'ERROR'}] ${e.message}`);

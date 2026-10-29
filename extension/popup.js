@@ -14,7 +14,7 @@ const OPTIONS = {
   model: [['std', 'Gemini Standar', '1 credit', false], ['adv', 'Gemini Advanced', '2 credit', true]]
 };
 const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
-const PLAN = 'free'; // sistem akun belum ada: semua pengguna dianggap Free
+let plan = 'free'; // diisi dari akun setelah login
 
 let state = { ...DEFAULTS };
 let savedTimer = null;
@@ -22,13 +22,14 @@ const $ = (sel, root = document) => root.querySelector(sel);
 
 // ---- Pindah tampilan (utama / credit habis / Advanced khusus Premium) ----
 function show(view) {
-  for (const id of ['vMain', 'vHabis', 'vAdv']) $('#' + id).hidden = id !== view;
+  for (const id of ['vLogin', 'vMain', 'vHabis', 'vAdv']) $('#' + id).hidden = id !== view;
   $('#msg').textContent = '';
 }
 
 // ---- Credit ----
+// c = credit dari server: { left, quota, resetAt } dengan resetAt berupa teks tanggal ISO.
 function sisaWaktu(resetAt) {
-  const ms = Math.max(0, resetAt - Date.now());
+  const ms = Math.max(0, Date.parse(resetAt) - Date.now());
   const hari = Math.floor(ms / 86400000);
   const jam = Math.floor((ms % 86400000) / 3600000);
   return hari >= 1 ? `${hari} hari ${jam} jam` : `${jam} jam`;
@@ -69,7 +70,7 @@ function render() {
       b.setAttribute('role', 'option');
       const left = document.createElement('span');
       left.textContent = o[1];
-      if (key === 'model' && o[3] && PLAN !== 'premium') {
+      if (key === 'model' && o[3] && plan !== 'premium') {
         const badge = document.createElement('span');
         badge.className = 'bdg';
         badge.textContent = 'PREMIUM';
@@ -86,7 +87,7 @@ function render() {
 }
 function choose(key, value, premiumOnly) {
   closeAll();
-  if (key === 'model' && premiumOnly && PLAN !== 'premium') { show('vAdv'); return; }
+  if (key === 'model' && premiumOnly && plan !== 'premium') { show('vAdv'); return; }
   $('#msg').textContent = '';
   state[key] = value;
   chrome.storage.sync.set({ [key]: value }).then(() => {
@@ -118,14 +119,21 @@ document.addEventListener('click', closeAll);
 // ---- Akun Google ----
 // Login dan logout dikerjakan background (lihat background.js). Popup hanya menampilkan
 // isi 'session' di chrome.storage.local dan ikut berubah saat isinya berubah.
+// Belum login: hanya layar "Masuk untuk menerjemahkan". Sudah login: credit dan pengaturan.
 const AVATAR_DEFAULT = $('#av').innerHTML;
 
 function renderAkun(session) {
   const user = session && session.user;
   const av = $('#av');
-  $('#btnLogin').hidden = !!user;
   $('#akunInfo').hidden = !user;
+  $('#creditBox').hidden = !user;
   if (user) {
+    const planBerubah = plan !== user.plan;
+    plan = user.plan;
+    // Baru dibuka atau baru saja login: tampilkan pengaturan (renderCredit bisa menggantinya dengan "credit habis").
+    if (!['vMain', 'vHabis', 'vAdv'].some((id) => !$('#' + id).hidden)) show('vMain');
+    renderCredit(user.credit);
+    if (planBerubah) render(); // lencana PREMIUM di pilihan model mengikuti paket akun
     $('#akunEmail').textContent = user.email;
     av.title = user.email;
     av.setAttribute('aria-label', user.email);
@@ -138,12 +146,14 @@ function renderAkun(session) {
     } else {
       av.innerHTML = AVATAR_DEFAULT;
     }
-    $('#tos').textContent = 'Credit masih dihitung di browser ini; dipindah ke akun pada tahap berikutnya.';
+    $('#tos').textContent = '';
   } else {
+    plan = 'free';
+    show('vLogin');
     av.innerHTML = AVATAR_DEFAULT;
     av.title = 'Belum login';
     av.setAttribute('aria-label', 'Belum login');
-    $('#tos').textContent = 'Belum login. Credit disimpan di browser ini.';
+    $('#tos').textContent = 'Kami hanya menerima email dan foto profil akun Google Anda.';
   }
 }
 
@@ -168,18 +178,18 @@ $('#btnStandar').addEventListener('click', () => show('vMain'));
 $('#btnTutup').addEventListener('click', () => window.close());
 
 // ---- Muat data awal ----
-chrome.storage.sync.get(DEFAULTS).then((s) => {
+// Akun dulu (menentukan paket Free/Premium), baru pengaturan. Data tersimpan ditampilkan dulu
+// supaya cepat, lalu background meminta data terbaru (credit, paket) ke server.
+(async () => {
+  const { session } = await chrome.storage.local.get('session');
+  renderAkun(session);
+  const s = await chrome.storage.sync.get(DEFAULTS);
   state = { ...DEFAULTS, ...s };
-  if (state.model === 'adv' && PLAN !== 'premium') state.model = 'std';
+  if (state.model === 'adv' && plan !== 'premium') state.model = 'std';
   render();
-});
-// Minta credit lewat background (background yang mengisi ulang credit tiap 7 hari).
-chrome.runtime.sendMessage({ type: 'credit' }).then(renderCredit);
-// Credit berubah saat popup terbuka (misalnya terjemahan baru selesai): perbarui tampilan.
-// Akun: tampilkan data tersimpan dulu (cepat), lalu minta data terbaru ke server lewat background.
-chrome.storage.local.get('session').then(({ session }) => renderAkun(session));
-chrome.runtime.sendMessage({ type: 'me' });
+  chrome.runtime.sendMessage({ type: 'me' });
+})();
+// Sesi berubah saat popup terbuka (login, keluar, atau credit berkurang setelah terjemahan).
 chrome.storage.onChanged.addListener((ch, area) => {
-  if (area === 'local' && ch.credit) renderCredit(ch.credit.newValue);
   if (area === 'local' && ch.session) renderAkun(ch.session.newValue);
 });

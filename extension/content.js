@@ -44,16 +44,34 @@
     hasImgCache = { t: now, v };
     return v;
   }
+  // Beberapa situs (misalnya X/Twitter) membuat <img> transparan (opacity 0) dan menampilkan gambar yang
+  // sama lewat background-image di elemen lain yang posisi dan ukurannya sama (saudara atau pembungkusnya).
+  // Cari elemen "kembaran" itu di antara elemen yang berada di bawah kursor.
+  function bgTwin(img, els) {
+    const r = img.getBoundingClientRect();
+    const sama = (a, b) => Math.abs(a - b) <= 2;
+    for (const p of els) {
+      if (p === img || isOurs(p)) continue;
+      const q = p.getBoundingClientRect();
+      if (!sama(q.left, r.left) || !sama(q.top, r.top) || !sama(q.width, r.width) || !sama(q.height, r.height)) continue;
+      const u = bgUrl(p);
+      if (u && !u.startsWith('data:') && visibleEl(p)) return p;
+    }
+    return null;
+  }
   // Cari gambar di bawah kursor. elementsFromPoint dipakai agar tetap ketemu walau ada lapisan transparan di atasnya.
   function findTarget(x, y) {
     const els = document.elementsFromPoint(x, y);
     for (const el of els) {
       if (isOurs(el)) { if (el === fab) return 'fab'; continue; }
       if (el.tagName !== 'IMG' && el.tagName !== 'CANVAS') continue;
-      if (!big(el.getBoundingClientRect()) || !visibleEl(el)) continue;
+      if (!big(el.getBoundingClientRect())) continue;
       if (el.tagName === 'IMG' && !(el.complete && el.naturalWidth >= MIN_SIZE)) continue;
-      const v = visibleRect(el);
-      if (v.ok && x >= v.l && x <= v.r && y >= v.t && y <= v.b) return el;
+      // Gambar transparan: pakai pembungkus yang menampilkan gambarnya, bila ada.
+      const t = visibleEl(el) ? el : el.tagName === 'IMG' ? bgTwin(el, els) : null;
+      if (!t) continue;
+      const v = visibleRect(t);
+      if (v.ok && x >= v.l && x <= v.r && y >= v.t && y <= v.b) return t;
     }
     if (pageHasImages()) return null;
     for (const el of els) {
@@ -275,10 +293,12 @@
     return el;
   }
   function stopLoader(el) { if (el) { clearInterval(el._timer); el.remove(); } }
-  // Pesan error untuk pengguna. Credit hanya dipotong bila berhasil, jadi katakan dengan jelas.
+  // Pesan error untuk pengguna. Credit hanya dipotong bila berhasil, jadi katakan dengan jelas,
+  // kecuali bila permintaan memang ditolak sebelum diproses (belum login, credit habis, khusus Premium).
+  const DITOLAK_AWAL = ['NO_CREDIT', 'NOT_LOGGED_IN', 'PREMIUM_ONLY'];
   function errText(res) {
     const m = (res && res.message) || 'Terjemahan gagal';
-    return res && res.code === 'NO_CREDIT' ? m : m + ' Credit tidak dipotong.';
+    return res && DITOLAK_AWAL.includes(res.code) ? m : m + ' Credit tidak dipotong.';
   }
 
   function showResult(img, regions, covered = FULL) {

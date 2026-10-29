@@ -70,48 +70,35 @@ async function captureCrop(windowId, rect, dpr) {
   return bufferToBase64(await blob.arrayBuffer());
 }
 
-async function sendToBackend(image) {
+const PESAN_LOGIN = 'Silakan masuk dulu: klik ikon Image Translator di toolbar, lalu "Masuk dengan Google".';
+
+// Credit dicek dan dipotong oleh server (per akun, di MySQL), bukan di browser,
+// karena data di browser bisa diubah sendiri oleh pengguna.
+async function sendToBackend(image, session) {
   const settings = await getSettings();
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.token },
       body: JSON.stringify({ image, src: settings.src, tgt: settings.tgt, model: settings.model })
     });
     const data = await res.json();
+    if (res.status === 401) {
+      // Sesi kedaluwarsa atau sudah dihapus di server: anggap keluar.
+      await chrome.storage.local.remove('session');
+      return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
+    }
     if (!res.ok) return { ok: false, code: data.code || 'ERROR', message: data.message || 'Terjemahan gagal' };
+    // Simpan sisa credit terbaru; popup yang sedang terbuka ikut berubah lewat storage.onChanged.
+    // Dibaca ulang dulu: kalau pengguna keluar selama proses, sesinya jangan dihidupkan lagi.
+    const kini = await getSession();
+    if (data.credit && kini && kini.token === session.token) {
+      await chrome.storage.local.set({ session: { ...kini, user: { ...kini.user, credit: data.credit } } });
+    }
     return { ok: true, ...data };
   } catch (e) {
     return { ok: false, code: 'NETWORK', message: 'Server belum berjalan. Jalankan backend (npm start) dan layanan OCR.' };
   }
-}
-
-// ---- Credit lokal (sementara, sebelum sistem akun dibuat) ----
-// Aturan sama dengan SRS: credit mingguan, Standar 1 credit, Advanced 2 credit, dan credit
-// hanya dipotong bila terjemahan berhasil (gagal atau teks tidak ditemukan = tidak dipotong).
-// Disimpan di chrome.storage.local, jadi hanya berlaku di browser ini. Nanti dipindah ke server
-// per akun, karena data di browser bisa diubah sendiri oleh pengguna.
-const CREDIT_QUOTA = 10;
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const COST = { std: 1, adv: 2 };
-
-async function getCredit() {
-  const { credit } = await chrome.storage.local.get('credit');
-  const now = Date.now();
-  if (!credit || now >= credit.resetAt) {
-    // Pertama kali dipakai, atau sudah lewat 7 hari: isi ulang.
-    const baru = { left: CREDIT_QUOTA, quota: CREDIT_QUOTA, resetAt: now + WEEK_MS };
-    await chrome.storage.local.set({ credit: baru });
-    return baru;
-  }
-  return credit;
-}
-
-async function useCredit(cost) {
-  const c = await getCredit();
-  c.left = Math.max(0, c.left - cost);
-  await chrome.storage.local.set({ credit: c });
-  return c;
 }
 
 // ---- Akun Google (UC-09 Registrasi otomatis, UC-10 Login) ----
@@ -197,22 +184,13 @@ async function refreshMe() {
 
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.
 async function translate(msg) {
-  const settings = await getSettings();
-  const cost = COST[settings.model] || 1;
-  const credit = await getCredit();
-  if (credit.left < cost) {
-    return { ok: false, code: 'NO_CREDIT', message: 'Credit minggu ini habis. Buka popup Image Translator untuk melihat kapan credit diperbarui.' };
-  }
-  const res = await translateRaw(msg);
-  if (res.ok) await useCredit(cost); // hanya dipotong bila berhasil
-  return res;
-}
-
-async function translateRaw(msg) {
   if (MOCK) {
     await new Promise((r) => setTimeout(r, 1200));
     return { ok: true, ...mockResult(await getSettings()) };
   }
+  // Wajib login: cek dulu sebelum mengunduh gambar, supaya tidak membuang waktu.
+  const session = await getSession();
+  if (!session) return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
   let image = msg.image;
   if (!image) {
     try {
@@ -222,17 +200,13 @@ async function translateRaw(msg) {
       return { ok: false, code: 'IMAGE_FETCH', message: 'Gambar tidak bisa diambil dari situs ini (situs memblokir unduhan gambar). Coba gambar atau situs lain.' };
     }
   }
-  return sendToBackend(image);
+  return sendToBackend(image, session);
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === 'translate') {
     translate(msg).then(sendResponse);
     return true; // respons asinkron
-  }
-  if (msg && msg.type === 'credit') {
-    getCredit().then(sendResponse);
-    return true;
   }
   if (msg && msg.type === 'login') {
     login().then(sendResponse);

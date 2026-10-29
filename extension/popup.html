@@ -15,23 +15,28 @@
     </span>
   </header>
 
-  <!-- Akun Google -->
-  <section class="akun">
+  <!-- Akun Google: email dan tombol Keluar (hanya saat sudah login) -->
+  <div class="row" id="akunInfo" hidden>
+    <span class="email" id="akunEmail"></span>
+    <button class="link" type="button" id="btnLogout">Keluar</button>
+  </div>
+
+  <!-- Belum login: hanya layar ini yang tampil (UC-10). Tidak ada mode tamu. -->
+  <section class="view" id="vLogin" hidden>
+    <div class="ico gray">i</div>
+    <h2 class="c">Masuk untuk menerjemahkan</h2>
+    <div class="note c">Credit dan langganan disimpan di akun Google Anda. Akun baru dibuat otomatis saat pertama kali masuk.</div>
     <button class="btn" type="button" id="btnLogin">Masuk dengan Google</button>
-    <div class="row" id="akunInfo" hidden>
-      <span class="email" id="akunEmail"></span>
-      <button class="link" type="button" id="btnLogout">Keluar</button>
-    </div>
   </section>
 
-  <!-- Credit mingguan: selalu tampil di atas -->
-  <section>
+  <!-- Credit mingguan: tampil di atas setelah login -->
+  <section id="creditBox" hidden>
     <div class="row"><span class="lbl">Credit mingguan</span><span class="lbl strong" id="creditText">… / …</span></div>
     <div class="bar" id="creditBar"><i></i></div>
   </section>
 
   <!-- Tampilan utama: pengaturan -->
-  <section class="view" id="vMain">
+  <section class="view" id="vMain" hidden>
     <div class="wrap" data-key="src">
       <span class="lbl">Bahasa asal</span>
       <button class="sel" type="button" aria-haspopup="listbox"><span class="val"></span><span class="caret">▾</span></button>
