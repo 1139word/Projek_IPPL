@@ -1,6 +1,10 @@
-.it-fab{position:fixed;z-index:2147483646;width:34px;height:34px;padding:0;border-radius:50%;border:0;background:#1a8cf0;color:#fff;font:700 12px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);display:none;opacity:.4;transition:opacity .15s}
-.it-fab:hover,.it-fab:focus-visible{opacity:.8}
-.it-fab.show{display:block}
+/* Tombol ditempel langsung di halaman situs, jadi CSS situs (misalnya X) bisa ikut mengubahnya:
+   teks bergeser, huruf membesar, jarak huruf berubah. Semua sifat penting dikunci dengan !important
+   dan teks diletakkan di tengah dengan grid, supaya tombol tampil sama di semua situs.
+   left/top sengaja tidak dikunci karena diatur oleh content.js lewat style inline. */
+.it-fab{position:fixed!important;z-index:2147483646!important;box-sizing:border-box!important;width:34px!important;height:34px!important;min-width:0!important;min-height:0!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;background:#1a8cf0!important;color:#fff!important;font:700 12px/1 system-ui,sans-serif!important;letter-spacing:0!important;text-align:center!important;text-transform:none!important;text-indent:0!important;text-shadow:none!important;transform:none!important;cursor:pointer!important;box-shadow:0 1px 4px rgba(0,0,0,.3)!important;display:none!important;place-items:center!important;opacity:.4!important;transition:opacity .15s!important}
+.it-fab:hover,.it-fab:focus-visible{opacity:.8!important}
+.it-fab.show{display:grid!important}
 .it-layer{position:fixed;z-index:2147483645;pointer-events:none}
 .it-box span{display:block;max-width:100%;overflow-wrap:normal;word-break:normal}
 .it-box span.wrapany{overflow-wrap:anywhere}
