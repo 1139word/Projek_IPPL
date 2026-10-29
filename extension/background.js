@@ -2,7 +2,8 @@
 // MOCK = true berarti tidak memanggil backend; hasil berupa contoh agar alur UI bisa dicoba tanpa server.
 // MOCK = false: gambar dikirim ke backend (folder backend/) untuk OCR + Gemini.
 const MOCK = false;
-const API_URL = 'http://localhost:3000/api/translate';
+const API_BASE = 'http://localhost:3000';
+const API_URL = API_BASE + '/api/translate';
 
 const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
 
@@ -113,6 +114,87 @@ async function useCredit(cost) {
   return c;
 }
 
+// ---- Akun Google (UC-09 Registrasi otomatis, UC-10 Login) ----
+// Alur: Chrome memberi token Google -> backend memeriksanya ke Google -> backend membuat akun bila
+// belum ada dan memberi token sesi miliknya sendiri. Yang disimpan hanya token sesi
+// (chrome.storage.local, kunci 'session'). Token Google tidak disimpan karena hanya dipakai sekali.
+// Login dijalankan di sini, bukan di popup: saat jendela Google muncul, popup kehilangan fokus dan
+// langsung tertutup, sehingga proses yang berjalan di popup ikut terhenti.
+
+async function callApi(method, path, { body, token } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(API_BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  return { status: res.status, data: await res.json().catch(() => ({})) };
+}
+
+async function getSession() {
+  const { session } = await chrome.storage.local.get('session');
+  return session || null;
+}
+
+async function googleToken(interactive) {
+  const r = await chrome.identity.getAuthToken({ interactive });
+  return typeof r === 'string' ? r : r && r.token; // Chrome 105+ mengembalikan { token, grantedScopes }
+}
+
+async function login() {
+  let gToken;
+  try {
+    gToken = await googleToken(true);
+  } catch (e) {
+    // Jendela Google ditutup, akun bukan Test user, atau client ID tidak cocok dengan ID extension.
+    return { ok: false, message: 'Login Google dibatalkan atau ditolak: ' + e.message };
+  }
+  try {
+    let r = await callApi('POST', '/api/auth/google', { body: { accessToken: gToken } });
+    if (r.data.code === 'GOOGLE_TOKEN_INVALID') {
+      // Token di cache Chrome bisa sudah dicabut atau kedaluwarsa: buang, lalu minta yang baru sekali lagi.
+      await chrome.identity.removeCachedAuthToken({ token: gToken });
+      gToken = await googleToken(true);
+      r = await callApi('POST', '/api/auth/google', { body: { accessToken: gToken } });
+    }
+    if (r.status !== 200) return { ok: false, code: r.data.code, message: r.data.message || 'Login gagal' };
+    await chrome.storage.local.set({ session: { token: r.data.token, user: r.data.user } });
+    return { ok: true, user: r.data.user };
+  } catch (e) {
+    return { ok: false, code: 'NETWORK', message: 'Server belum berjalan. Jalankan backend (npm start).' };
+  }
+}
+
+async function logoutAkun() {
+  const session = await getSession();
+  await chrome.storage.local.remove('session');
+  // Hapus juga sesi di server. Bila server mati, sesi itu tetap kedaluwarsa sendiri dalam 30 hari.
+  if (session) await callApi('POST', '/api/auth/logout', { token: session.token }).catch(() => {});
+  // Buang token Google dari cache Chrome agar login berikutnya meminta token baru.
+  try {
+    const t = await googleToken(false);
+    if (t) await chrome.identity.removeCachedAuthToken({ token: t });
+  } catch (e) { /* tidak ada token di cache */ }
+  return { ok: true };
+}
+
+// Ambil data akun terbaru (foto, paket, credit). Sesi yang sudah tidak sah di server dihapus.
+async function refreshMe() {
+  const session = await getSession();
+  if (!session) return null;
+  try {
+    const r = await callApi('GET', '/api/me', { token: session.token });
+    if (r.status === 401) {
+      await chrome.storage.local.remove('session');
+      return null;
+    }
+    if (r.status === 200) {
+      const baru = { ...session, user: r.data };
+      await chrome.storage.local.set({ session: baru });
+      return baru;
+    }
+  } catch (e) { /* server mati: pakai data terakhir yang tersimpan */ }
+  return session;
+}
+
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.
 async function translate(msg) {
   const settings = await getSettings();
@@ -150,6 +232,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === 'credit') {
     getCredit().then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === 'login') {
+    login().then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === 'logout') {
+    logoutAkun().then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === 'me') {
+    refreshMe().then(sendResponse);
     return true;
   }
   if (msg && msg.type === 'capture') {

@@ -9,11 +9,20 @@
 <main class="pop">
   <header class="hd">
     <span class="lg">T</span>Image Translator
-    <!-- Tempat foto profil Google. Sistem akun belum ada, jadi masih ikon umum. -->
-    <span class="av" role="img" aria-label="Belum ada akun (mode uji)" title="Belum ada akun (mode uji)">
+    <!-- Foto profil Google. Ikon umum dipakai selama belum login. -->
+    <span class="av" id="av" role="img" aria-label="Belum login" title="Belum login">
       <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="11" r="5" fill="var(--avatar-fg)"/><path d="M4 27c1-6.5 5-8.5 10-8.5s9 2 10 8.5z" fill="var(--avatar-fg)"/></svg>
     </span>
   </header>
+
+  <!-- Akun Google -->
+  <section class="akun">
+    <button class="btn" type="button" id="btnLogin">Masuk dengan Google</button>
+    <div class="row" id="akunInfo" hidden>
+      <span class="email" id="akunEmail"></span>
+      <button class="link" type="button" id="btnLogout">Keluar</button>
+    </div>
+  </section>
 
   <!-- Credit mingguan: selalu tampil di atas -->
   <section>
@@ -62,7 +71,7 @@
   </section>
 
   <div class="note c info" id="msg" aria-live="polite"></div>
-  <div class="tos">Mode uji: belum ada akun. Credit disimpan di browser ini.</div>
+  <div class="tos" id="tos"></div>
 </main>
 <script src="popup.js"></script>
 </body>

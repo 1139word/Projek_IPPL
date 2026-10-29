@@ -115,6 +115,50 @@ document.querySelectorAll('.wrap').forEach((wrap) => {
 });
 document.addEventListener('click', closeAll);
 
+// ---- Akun Google ----
+// Login dan logout dikerjakan background (lihat background.js). Popup hanya menampilkan
+// isi 'session' di chrome.storage.local dan ikut berubah saat isinya berubah.
+const AVATAR_DEFAULT = $('#av').innerHTML;
+
+function renderAkun(session) {
+  const user = session && session.user;
+  const av = $('#av');
+  $('#btnLogin').hidden = !!user;
+  $('#akunInfo').hidden = !user;
+  if (user) {
+    $('#akunEmail').textContent = user.email;
+    av.title = user.email;
+    av.setAttribute('aria-label', user.email);
+    if (user.picture) {
+      const img = document.createElement('img');
+      img.src = user.picture;
+      img.alt = '';
+      img.referrerPolicy = 'no-referrer'; // foto Google kadang ditolak bila alamat asal ikut dikirim
+      av.replaceChildren(img);
+    } else {
+      av.innerHTML = AVATAR_DEFAULT;
+    }
+    $('#tos').textContent = 'Credit masih dihitung di browser ini; dipindah ke akun pada tahap berikutnya.';
+  } else {
+    av.innerHTML = AVATAR_DEFAULT;
+    av.title = 'Belum login';
+    av.setAttribute('aria-label', 'Belum login');
+    $('#tos').textContent = 'Belum login. Credit disimpan di browser ini.';
+  }
+}
+
+$('#btnLogin').addEventListener('click', async () => {
+  const b = $('#btnLogin');
+  b.disabled = true;
+  b.textContent = 'Menunggu Google…';
+  $('#msg').textContent = '';
+  const res = await chrome.runtime.sendMessage({ type: 'login' });
+  b.disabled = false;
+  b.textContent = 'Masuk dengan Google';
+  if (!res.ok) $('#msg').textContent = res.message;
+});
+$('#btnLogout').addEventListener('click', () => chrome.runtime.sendMessage({ type: 'logout' }));
+
 // ---- Tombol ----
 // Paket Premium dan pembayaran QRIS belum dibuat (menunggu sistem akun).
 document.querySelectorAll('.premium').forEach((b) => b.addEventListener('click', () => {
@@ -132,6 +176,10 @@ chrome.storage.sync.get(DEFAULTS).then((s) => {
 // Minta credit lewat background (background yang mengisi ulang credit tiap 7 hari).
 chrome.runtime.sendMessage({ type: 'credit' }).then(renderCredit);
 // Credit berubah saat popup terbuka (misalnya terjemahan baru selesai): perbarui tampilan.
+// Akun: tampilkan data tersimpan dulu (cepat), lalu minta data terbaru ke server lewat background.
+chrome.storage.local.get('session').then(({ session }) => renderAkun(session));
+chrome.runtime.sendMessage({ type: 'me' });
 chrome.storage.onChanged.addListener((ch, area) => {
   if (area === 'local' && ch.credit) renderCredit(ch.credit.newValue);
+  if (area === 'local' && ch.session) renderAkun(ch.session.newValue);
 });
