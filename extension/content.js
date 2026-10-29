@@ -10,7 +10,13 @@
   const cache = new Map(); // alamat gambar -> { regions, sk }; hasil dipakai ulang tanpa memanggil server
   let settings = { src: 'auto', tgt: 'en', model: 'std' };
   chrome.storage.sync.get(settings).then((v) => { settings = { ...settings, ...v }; });
-  chrome.storage.onChanged.addListener((ch) => { for (const k in ch) settings[k] = ch[k].newValue; });
+  chrome.storage.onChanged.addListener((ch) => {
+    for (const k in ch) settings[k] = ch[k].newValue;
+    if (ch.enabled) { enabled = ch.enabled.newValue !== false; if (!enabled) hideFab(); }
+  });
+  // Sakelar di popup. Mati = tombol tidak muncul; hasil terjemahan yang sudah tampil tetap ada.
+  let enabled = true;
+  chrome.storage.sync.get({ enabled: true }).then((v) => { enabled = v.enabled !== false; });
   const settingsKey = () => `${settings.src}|${settings.tgt}|${settings.model}`;
   let running = false;
 
@@ -253,6 +259,7 @@
   let lastPt = null;
   function refreshTarget() {
     moving = false;
+    if (!enabled) { hideFab(); return; }
     if (!lastPt) return;
     const t = findTarget(lastPt.x, lastPt.y);
     drawDebug(t);

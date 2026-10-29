@@ -21,6 +21,12 @@
     <button class="link" type="button" id="btnLogout">Keluar</button>
   </div>
 
+  <!-- Sakelar: sembunyikan tombol terjemah di semua halaman saat tidak sedang membaca komik -->
+  <div class="tgr" id="tglRow" hidden>
+    <span class="tt"><b>Tombol terjemah di halaman</b><span class="note" id="tglNote"></span></span>
+    <button class="tg" type="button" role="switch" id="tgl" aria-checked="true" aria-label="Tombol terjemah di halaman"></button>
+  </div>
+
   <!-- Belum login: hanya layar ini yang tampil (UC-10). Tidak ada mode tamu. -->
   <section class="view" id="vLogin" hidden>
     <div class="ico gray">i</div>

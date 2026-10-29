@@ -126,6 +126,7 @@ function renderAkun(session) {
   const user = session && session.user;
   const av = $('#av');
   $('#akunInfo').hidden = !user;
+  $('#tglRow').hidden = !user;
   $('#creditBox').hidden = !user;
   if (user) {
     const planBerubah = plan !== user.plan;
@@ -168,6 +169,21 @@ $('#btnLogin').addEventListener('click', async () => {
   if (!res.ok) $('#msg').textContent = res.message;
 });
 $('#btnLogout').addEventListener('click', () => chrome.runtime.sendMessage({ type: 'logout' }));
+
+// ---- Sakelar aktif ----
+// Disimpan di chrome.storage.sync (kunci 'enabled'). content.js di semua tab ikut mendengarkan,
+// jadi tombol langsung hilang/muncul tanpa memuat ulang halaman.
+function renderTgl(on) {
+  $('#tgl').classList.toggle('on', on);
+  $('#tgl').setAttribute('aria-checked', String(on));
+  $('#tglNote').textContent = on ? 'Matikan saat tidak membaca komik' : 'Mati di semua halaman';
+}
+$('#tgl').addEventListener('click', () => {
+  const on = !$('#tgl').classList.contains('on');
+  renderTgl(on);
+  chrome.storage.sync.set({ enabled: on });
+});
+chrome.storage.sync.get({ enabled: true }).then((v) => renderTgl(v.enabled !== false));
 
 // ---- Tombol ----
 // Paket Premium dan pembayaran QRIS belum dibuat (menunggu sistem akun).
