@@ -3,8 +3,15 @@
   "name": "Image Translator (nama sementara)",
   "version": "0.1.0",
   "description": "Terjemahkan teks pada gambar komik langsung di halaman.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "identity"],
   "host_permissions": ["<all_urls>"],
+  "oauth2": {
+    "client_id": "739555755065-8rn5fpn60gs59a819su9ubgt2aufoe40.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Image Translator", "default_popup": "popup.html" },
   "content_scripts": [
