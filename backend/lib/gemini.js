@@ -67,6 +67,45 @@ function bacaJawaban(raw, jumlah) {
   return hasil;
 }
 
+// Cara cadangan bila JSON utuhnya rusak (misalnya satu tanda kutip di tengah tidak di-escape):
+// ambil satu per satu objek {"id":..,"type":..,"text":..} yang masih utuh. Id yang tidak terselamatkan
+// nanti diisi teks aslinya. Mengembalikan null bila tidak ada satu pun yang terbaca.
+function selamatkan(raw, jumlah) {
+  const hasil = new Array(jumlah).fill(null);
+  let dapat = 0;
+  for (const m of String(raw || '').matchAll(/\{[^{}]*"id"\s*:\s*\d+[^{}]*\}/g)) {
+    let t;
+    try { t = JSON.parse(m[0]); } catch { continue; }
+    if (Number.isInteger(t.id) && t.id >= 0 && t.id < jumlah && typeof t.text === 'string' && !hasil[t.id]) {
+      hasil[t.id] = { text: t.text, type: jenisSah(t.type) };
+      dapat++;
+    }
+  }
+  return dapat ? hasil : null;
+}
+
+// Bentuk jawaban yang diwajibkan ke Gemini (structured output). Dengan skema ini Gemini dipaksa
+// mengeluarkan JSON yang sah dan sesuai bentuk, jauh lebih jarang rusak dibanding hanya diminta lewat prompt.
+const SKEMA = {
+  type: 'OBJECT',
+  properties: {
+    translations: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          id: { type: 'INTEGER' },
+          type: { type: 'STRING', enum: JENIS },
+          text: { type: 'STRING' }
+        },
+        required: ['id', 'type', 'text'],
+        propertyOrdering: ['id', 'type', 'text']
+      }
+    }
+  },
+  required: ['translations']
+};
+
 // Satu panggilan ke Gemini. Mengembalikan teks jawaban mentah dan alasan berhentinya (finishReason).
 async function mintaGemini(texts, { src, tgt, model, key, fetchFn }) {
   const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
@@ -78,7 +117,7 @@ async function mintaGemini(texts, { src, tgt, model, key, fetchFn }) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: buatPrompt(texts, src, tgt) }] }],
-        generationConfig: { temperature: 0.3, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: SKEMA }
       }),
       signal: AbortSignal.timeout(60000)
     });
@@ -107,22 +146,30 @@ const PERCOBAAN = 2;
 async function translateTexts(texts, { src = 'auto', tgt = 'en', model = 'std', fetchFn = fetch } = {}) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new GeminiError('NO_API_KEY', 'GEMINI_API_KEY belum diisi di backend/.env');
+  // Kalau ada yang kosong, tampilkan teks asli sebagai dialog.
+  const rapikan = (hasil) => hasil.map((t, i) => ({
+    text: (t && t.text && String(t.text).trim()) || texts[i],
+    type: (t && t.text && String(t.text).trim() && t.type) || 'dialog'
+  }));
+  let cadangan = null; // hasil terbaik dari jawaban rusak, dipakai bila semua percobaan gagal
   for (let ke = 1; ; ke++) {
     const { raw, finishReason } = await mintaGemini(texts, { src, tgt, model, key, fetchFn });
     try {
-      const hasil = bacaJawaban(raw, texts.length);
-      // Kalau ada yang kosong, tampilkan teks asli sebagai dialog.
-      return hasil.map((t, i) => ({
-        text: (t && t.text && String(t.text).trim()) || texts[i],
-        type: (t && t.text && String(t.text).trim() && t.type) || 'dialog'
-      }));
+      return rapikan(bacaJawaban(raw, texts.length));
     } catch (e) {
       if (e.code !== 'BAD_RESPONSE') throw e;
       // Catat penyebabnya agar bisa dianalisis: finishReason MAX_TOKENS = terpotong, SAFETY = diblokir.
-      console.log(`Gemini percobaan ${ke}: ${e.message} | finishReason=${finishReason} | awal jawaban: ${JSON.stringify(raw.slice(0, 120))}`);
-      if (ke >= PERCOBAAN) throw e;
+      // Bagian akhir ikut dicatat karena kerusakan JSON sering ada di tengah/akhir, bukan di awal.
+      console.log(`Gemini percobaan ${ke}: ${e.message} | finishReason=${finishReason} | panjang ${raw.length} | awal: ${JSON.stringify(raw.slice(0, 120))} | akhir: ${JSON.stringify(raw.slice(-120))}`);
+      const s = selamatkan(raw, texts.length);
+      if (s && (!cadangan || s.filter(Boolean).length > cadangan.filter(Boolean).length)) cadangan = s;
+      if (ke >= PERCOBAAN) {
+        if (!cadangan) throw e;
+        console.log(`Gemini: JSON rusak, ${cadangan.filter(Boolean).length} dari ${texts.length} teks diselamatkan (sisanya ditampilkan teks asli)`);
+        return rapikan(cadangan);
+      }
     }
   }
 }
 
-module.exports = { translateTexts, buatPrompt, bacaJawaban, modelName, GeminiError, JENIS };
+module.exports = { translateTexts, buatPrompt, bacaJawaban, selamatkan, modelName, GeminiError, JENIS };

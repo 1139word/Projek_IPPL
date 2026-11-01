@@ -331,7 +331,8 @@
   const DITOLAK_AWAL = ['NO_CREDIT', 'NOT_LOGGED_IN', 'PREMIUM_ONLY'];
   function errText(res) {
     const m = (res && res.message) || 'Terjemahan gagal';
-    return res && DITOLAK_AWAL.includes(res.code) ? m : m + ' Credit tidak dipotong.';
+    if (res && DITOLAK_AWAL.includes(res.code)) return m;
+    return (/[.!?]$/.test(m) ? m : m + '.') + ' Credit tidak dipotong.';
   }
 
   function showResult(img, regions, covered = FULL) {
@@ -503,6 +504,11 @@
     clearTimeout(restoreTimer);
     restoreTimer = setTimeout(restoreVisible, 200);
   }, true);
+  // Halaman viewer.html (fitur File Explorer) meminta gambarnya langsung diterjemahkan
+  // tanpa menunggu pengguna menekan tombol. Event ini hanya dikirim oleh viewer.js.
+  document.addEventListener('it-auto', (e) => {
+    if (e.target && e.target.tagName === 'IMG') run(e.target);
+  });
   // Situs yang membuang dan memasang ulang gambar tanpa digulir juga ditangani.
   new MutationObserver(() => {
     clearTimeout(restoreTimer);

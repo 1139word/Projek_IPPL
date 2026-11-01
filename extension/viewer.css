@@ -1,0 +1,14 @@
+/* Halaman viewer (fitur File Explorer). Kotak terjemahan memakai gaya dari content.css. */
+body{margin:0;min-height:100vh;background:#2b2b30;color:#eee;font:14px/1.45 system-ui,sans-serif}
+/* Header ikut tergulir (tidak sticky): kotak terjemahan memakai position:fixed dan hanya dipotong sesuai
+   layar, jadi header yang menempel di atas akan tertimpa kotak saat gambar digulir. */
+.atas{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#1d1d21;border-bottom:1px solid #3a3a40}
+.lg{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:#1a8cf0;color:#fff;font-weight:700}
+#nama{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status{margin-left:auto;color:#aaa;font-size:13px;white-space:nowrap}
+main{display:flex;justify-content:center;padding:24px 16px}
+#gambar{display:block;max-width:100%;height:auto;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.pesan{max-width:520px;margin-top:10vh;padding:20px 24px;border-radius:10px;background:#1d1d21;border:1px solid #3a3a40}
+.pesan p{margin:0 0 12px}
+.pesan button{background:#1a8cf0;color:#fff;border:0;border-radius:6px;padding:8px 14px;font:600 14px system-ui,sans-serif;cursor:pointer}
+.pesan button:hover{background:#1478d0}

@@ -39,6 +39,8 @@ async function setReferer(imageUrl, pageUrl) {
 }
 
 async function imageToBase64(url, pageUrl) {
+  // Gambar dari File Explorer sudah berupa data URL (dibaca oleh native host): cukup ambil isinya.
+  if (url && url.startsWith('data:')) return url.slice(url.indexOf(',') + 1);
   // Alamat blob: hanya bisa dibaca oleh halaman yang membuatnya (misalnya MANGA Plus).
   // Langsung tolak tanpa fetch, supaya Chrome tidak mencatatnya sebagai error extension;
   // content script lalu memakai cara cadangan (potret layar).
@@ -101,13 +103,13 @@ const PESAN_LOGIN = 'Silakan masuk dulu: klik ikon Image Translator di toolbar, 
 
 // Credit dicek dan dipotong oleh server (per akun, di MySQL), bukan di browser,
 // karena data di browser bisa diubah sendiri oleh pengguna.
-async function sendToBackend(image, session) {
+async function sendToBackend(image, session, source = 'page') {
   const settings = await getSettings();
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.token },
-      body: JSON.stringify({ image, src: settings.src, tgt: settings.tgt, model: settings.model })
+      body: JSON.stringify({ image, src: settings.src, tgt: settings.tgt, model: settings.model, source })
     });
     const data = await res.json();
     if (res.status === 401) {
@@ -260,8 +262,14 @@ async function gambarQr(orderId) {
   }
 }
 
+// Asal permintaan ditentukan dari alamat pengirim, bukan dari isi pesan: halaman viewer.html
+// (fitur File Explorer) = 'explorer'. Backend memakai ini untuk memeriksa akun Premium.
+function asalPermintaan(sender) {
+  return sender && sender.url && sender.url.startsWith(chrome.runtime.getURL('viewer.html')) ? 'explorer' : 'page';
+}
+
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.
-async function translate(msg, pageUrl) {
+async function translate(msg, pageUrl, source = 'page') {
   if (MOCK) {
     await new Promise((r) => setTimeout(r, 1200));
     return { ok: true, ...mockResult(await getSettings()) };
@@ -278,12 +286,12 @@ async function translate(msg, pageUrl) {
       return { ok: false, code: 'IMAGE_FETCH', message: 'Gambar tidak bisa diambil dari situs ini (situs memblokir unduhan gambar). Coba gambar atau situs lain.' };
     }
   }
-  return sendToBackend(image, session);
+  return sendToBackend(image, session, source);
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === 'translate') {
-    translate(msg, _sender.tab && _sender.tab.url).then(sendResponse);
+    translate(msg, _sender.tab && _sender.tab.url, asalPermintaan(_sender)).then(sendResponse);
     return true; // respons asinkron
   }
   if (msg && msg.type === 'login') {

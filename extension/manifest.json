@@ -4,7 +4,7 @@
   "name": "Image Translator (nama sementara)",
   "version": "0.1.0",
   "description": "Terjemahkan teks pada gambar komik langsung di halaman.",
-  "permissions": ["storage", "identity", "declarativeNetRequestWithHostAccess"],
+  "permissions": ["storage", "identity", "declarativeNetRequestWithHostAccess", "nativeMessaging"],
   "host_permissions": ["<all_urls>"],
   "oauth2": {
     "client_id": "739555755065-8rn5fpn60gs59a819su9ubgt2aufoe40.apps.googleusercontent.com",

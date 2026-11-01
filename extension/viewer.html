@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Translator</title>
+<link rel="stylesheet" href="content.css">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<!-- Halaman untuk fitur Premium "terjemahkan gambar dari File Explorer".
+     Dibuka oleh menu klik kanan Windows: chrome.exe "chrome-extension://<id>/viewer.html?path=<lokasi file>". -->
+<header class="atas">
+  <span class="lg">T</span>
+  <span id="nama">Image Translator</span>
+  <span id="status" class="status"></span>
+</header>
+<main>
+  <section id="pesan" class="pesan" hidden>
+    <p id="pesanTeks"></p>
+    <button id="pesanTombol" type="button" hidden></button>
+  </section>
+  <img id="gambar" alt="" hidden>
+</main>
+<script src="content.js"></script>
+<script src="viewer.js"></script>
+</body>
+</html>

@@ -37,6 +37,25 @@ test('dua kali tidak terbaca: menyerah dengan BAD_RESPONSE', diam(async () => {
   assert.strictEqual(f.panggil, 2);
 }));
 
+test('JSON rusak di tengah: teks yang utuh diselamatkan, sisanya teks asli', diam(async () => {
+  // Tanda kutip tanpa escape di teks id 1 membuat seluruh JSON tidak sah.
+  const rusak = '{"translations":[{"id":0,"type":"dialog","text":"Halo"},{"id":1,"type":"dialog","text":"Dia bilang "hai""},{"id":2,"type":"sfx","text":"Duar"}]}';
+  const f = fetchPalsu([rusak]);
+  assert.deepStrictEqual(await translateTexts(['A', 'B', 'C'], { fetchFn: f }), [
+    { text: 'Halo', type: 'dialog' },
+    { text: 'B', type: 'dialog' },
+    { text: 'Duar', type: 'sfx' }
+  ]);
+  assert.strictEqual(f.panggil, 2); // tetap dicoba ulang sekali dulu
+}));
+
+test('permintaan memakai skema JSON (structured output)', async () => {
+  let body;
+  const f = async (_u, opt) => { body = JSON.parse(opt.body); return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: SAH }] } }] }) }; };
+  await translateTexts(['Hello', 'World'], { fetchFn: f });
+  assert.strictEqual(body.generationConfig.responseSchema.properties.translations.type, 'ARRAY');
+});
+
 test('jenis tidak dikenal dianggap dialog, teks kosong diganti teks asli', async () => {
   const f = fetchPalsu(['{"translations":[{"id":0,"type":"noise","text":"A"},{"id":1,"type":"sfx","text":""}]}']);
   assert.deepStrictEqual(await translateTexts(['x', 'Asli'], { fetchFn: f }), [

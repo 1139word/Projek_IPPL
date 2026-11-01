@@ -143,13 +143,13 @@ app.get('/api/orders/:id/qr', requireLogin, async (req, res) => {
 
 // Wajib login. Credit dicek sebelum OCR, lalu dipotong hanya bila terjemahan berhasil.
 app.post('/api/translate', requireLogin, async (req, res) => {
-  const { image, src, tgt, model = 'std' } = req.body || {};
+  const { image, src, tgt, model = 'std', source = 'page' } = req.body || {};
   try {
-    checkCredit(req.user, model);
+    checkCredit(req.user, model, { source });
     const result = await translateImage({ image, src, tgt, model });
     const user = await chargeCredit(req.user, model, { store: userStore });
     const m = result.meta;
-    console.log(`OK  ${m.balloons} balon (sfx ${m.sfx}, watermark ${m.watermark}) | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt} | ${user.email} sisa ${user.credit_left}`);
+    console.log(`OK  ${m.balloons} balon (sfx ${m.sfx}, watermark ${m.watermark}) | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt}${source === 'explorer' ? ' (Explorer)' : ''} | ${user.email} sisa ${user.credit_left}`);
     // LOG_DETAIL=1 di .env: tampilkan setiap balon (jenis, teks hasil OCR, terjemahan) untuk diagnosis.
     if (process.env.LOG_DETAIL === '1') {
       for (const r of result.regions) console.log(`    [${r.type}] ${r.original}  =>  ${r.text}`);

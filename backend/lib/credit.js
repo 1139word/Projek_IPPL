@@ -12,11 +12,18 @@ function costOf(model) {
   return COST[model];
 }
 
+// Asal permintaan: 'page' = tombol di halaman situs, 'explorer' = gambar dari File Explorer (khusus Premium).
+const SOURCES = ['page', 'explorer'];
+
 // Dipanggil SEBELUM OCR dan Gemini, supaya permintaan yang pasti ditolak tidak membuang waktu dan biaya API.
-function checkCredit(user, model) {
+function checkCredit(user, model, { source = 'page' } = {}) {
   const cost = costOf(model);
+  if (!SOURCES.includes(source)) throw new CreditError('BAD_REQUEST', 'Asal permintaan tidak dikenal', 400);
   if (model === 'adv' && user.plan !== 'premium') {
     throw new CreditError('PREMIUM_ONLY', 'Model Advanced khusus akun Premium', 403);
+  }
+  if (source === 'explorer' && user.plan !== 'premium') {
+    throw new CreditError('PREMIUM_ONLY', 'Terjemahan gambar dari File Explorer khusus akun Premium', 403);
   }
   if (user.credit_left < cost) {
     throw new CreditError('NO_CREDIT', 'Credit minggu ini habis. Buka popup Image Translator untuk melihat kapan credit diperbarui.', 402);

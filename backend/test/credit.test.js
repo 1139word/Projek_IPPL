@@ -28,6 +28,13 @@ test('akun Free tidak boleh memakai Advanced walau credit cukup', () => {
   assert.throws(() => checkCredit(free(10), 'adv'), { code: 'PREMIUM_ONLY', status: 403 });
 });
 
+test('File Explorer khusus Premium (UC Premium: terjemahkan dari File Explorer)', () => {
+  assert.throws(() => checkCredit(free(10), 'std', { source: 'explorer' }), { code: 'PREMIUM_ONLY', status: 403 });
+  assert.strictEqual(checkCredit(premium(10), 'std', { source: 'explorer' }), 1);
+  assert.strictEqual(checkCredit(free(10), 'std', { source: 'page' }), 1);
+  assert.throws(() => checkCredit(premium(10), 'std', { source: 'lain' }), { code: 'BAD_REQUEST', status: 400 });
+});
+
 test('credit kurang dari biaya ditolak sebelum menerjemahkan', () => {
   assert.throws(() => checkCredit(free(0), 'std'), { code: 'NO_CREDIT', status: 402 });
   assert.throws(() => checkCredit(premium(1), 'adv'), { code: 'NO_CREDIT' });
