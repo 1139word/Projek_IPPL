@@ -209,6 +209,57 @@ async function refreshMe() {
   return session;
 }
 
+// ---- Premium (UC-08) ----
+// Dipakai halaman premium.html. Semua permintaan membawa token sesi; backend yang bertanya ke Midtrans.
+const PESAN_SERVER = 'Server tidak bisa dihubungi. Pastikan backend menyala.';
+
+async function pesananBaru() {
+  const session = await getSession();
+  if (!session) return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
+  try {
+    const r = await callApi('POST', '/api/orders', { token: session.token });
+    if (r.status === 200) return { ok: true, order: r.data };
+    if (r.data.code === 'ALREADY_PREMIUM') return { ok: false, code: r.data.code, message: r.data.message, user: (await refreshMe() || {}).user };
+    return { ok: false, code: r.data.code, message: r.data.message || 'Pesanan tidak bisa dibuat.' };
+  } catch (e) {
+    return { ok: false, code: 'SERVER_DOWN', message: PESAN_SERVER };
+  }
+}
+
+async function statusPesanan(orderId) {
+  const session = await getSession();
+  if (!session) return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
+  try {
+    const r = await callApi('GET', '/api/orders/' + encodeURIComponent(orderId), { token: session.token });
+    if (r.status !== 200) return { ok: false, code: r.data.code, message: r.data.message };
+    // Data akun terbaru (paket Premium, credit) langsung disimpan, jadi popup ikut berubah.
+    await chrome.storage.local.set({ session: { ...session, user: r.data.user } });
+    return { ok: true, order: r.data.order, user: r.data.user };
+  } catch (e) {
+    return { ok: false, code: 'SERVER_DOWN', message: PESAN_SERVER };
+  }
+}
+
+async function gambarQr(orderId) {
+  const session = await getSession();
+  if (!session) return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
+  try {
+    const res = await fetch(`${API_BASE}/api/orders/${encodeURIComponent(orderId)}/qr`, { headers: { Authorization: 'Bearer ' + session.token } });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      return { ok: false, message: d.message || 'Gambar QR tidak bisa diambil.' };
+    }
+    // Ubah gambar menjadi data URL agar bisa langsung dipakai di <img> halaman premium.
+    const blob = await res.blob();
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { ok: true, dataUrl: `data:${blob.type || 'image/png'};base64,${btoa(bin)}` };
+  } catch (e) {
+    return { ok: false, message: PESAN_SERVER };
+  }
+}
+
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.
 async function translate(msg, pageUrl) {
   if (MOCK) {
@@ -248,6 +299,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     callApi('GET', '/api/plans')
       .then((r) => sendResponse(r.status === 200 ? { ok: true, plans: r.data } : { ok: false, message: 'Info paket tidak bisa diambil dari server.' }))
       .catch(() => sendResponse({ ok: false, message: 'Server tidak bisa dihubungi. Pastikan backend menyala.' }));
+    return true;
+  }
+  if (msg && msg.type === 'order-create') {
+    pesananBaru().then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === 'order-status') {
+    statusPesanan(msg.orderId).then(sendResponse);
+    return true;
+  }
+  if (msg && msg.type === 'order-qr') {
+    gambarQr(msg.orderId).then(sendResponse);
     return true;
   }
   if (msg && msg.type === 'me') {

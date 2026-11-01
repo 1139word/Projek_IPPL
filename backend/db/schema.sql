@@ -34,3 +34,20 @@ CREATE TABLE IF NOT EXISTS sessions (
   CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
+
+-- Satu baris per pesanan Premium (UC-08). Status hanya diubah backend dari jawaban Midtrans.
+CREATE TABLE IF NOT EXISTS orders (
+  order_id   VARCHAR(50)     NOT NULL,                    -- ID pesanan yang juga dikirim ke Midtrans
+  user_id    BIGINT UNSIGNED NOT NULL,
+  amount     INT UNSIGNED    NOT NULL,                    -- harga dalam rupiah
+  days       INT UNSIGNED    NOT NULL,                    -- lama Premium yang dibeli
+  status     ENUM('pending', 'paid', 'expired', 'failed') NOT NULL DEFAULT 'pending',
+  qr_url     VARCHAR(2048)   NULL,                        -- alamat gambar QR dari Midtrans
+  expires_at DATETIME        NOT NULL,                    -- batas waktu membayar
+  paid_at    DATETIME        NULL,
+  created_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (order_id),
+  KEY idx_orders_user (user_id),
+  CONSTRAINT fk_orders_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE
+) ENGINE = InnoDB;

@@ -1,5 +1,5 @@
 // Backend Image Translator: endpoint penerjemahan, akun (login Google), dan credit per akun.
-// Pembayaran Premium menyusul di tahap berikutnya.
+// dan pembelian Premium lewat QRIS Midtrans.
 //
 // Menjalankan:  npm start   (membaca konfigurasi dari file .env)
 
@@ -10,6 +10,9 @@ const { userStore } = require('./lib/auth-store');
 const { verifyGoogleToken } = require('./lib/google');
 const { checkCredit, chargeCredit } = require('./lib/credit');
 const { infoPaket } = require('./lib/paket');
+const { buatPesanan, cekPesanan, publicOrder } = require('./lib/premium');
+const { orderStore } = require('./lib/order-store');
+const midtrans = require('./lib/midtrans');
 
 const app = express();
 app.use(express.json({ limit: '25mb' })); // gambar dikirim sebagai base64, jadi ukurannya bisa besar
@@ -66,7 +69,24 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 // UC-02 Melihat credit: data akun untuk popup.
-app.get('/api/me', requireLogin, (req, res) => res.json(publicUser(req.user)));
+// Bila ada pesanan Premium yang belum selesai, statusnya dicek dulu. Jadi pengguna yang sudah membayar
+// tetapi menutup halaman pembayaran terlalu cepat tetap mendapat Premium saat membuka popup.
+app.get('/api/me', requireLogin, async (req, res) => {
+  let user = req.user;
+  try {
+    const pending = await orderStore.findLatestPending(user.id);
+    if (pending) {
+      const { order, activated } = await cekPesanan(user, pending.order_id, depsPremium);
+      if (activated) {
+        console.log(`PREMIUM AKTIF ${user.email} (pesanan ${order.order_id}, dicek dari popup)`);
+        user = await userFromSession(bearerToken(req), { store: userStore });
+      }
+    }
+  } catch (e) {
+    console.log(`Cek pesanan gagal: ${e.message}`); // popup tetap mendapat data akun
+  }
+  res.json(publicUser(user));
+});
 
 // UC-07 Melihat Paket Premium: harga, kuota, dan fitur tiap paket. Tidak perlu login.
 app.get('/api/plans', (req, res) => res.json(infoPaket()));
@@ -75,6 +95,45 @@ app.post('/api/auth/logout', async (req, res) => {
   try {
     await logout(bearerToken(req), { store: userStore });
     res.json({ ok: true });
+  } catch (e) {
+    kirimGagal(res, e);
+  }
+});
+
+// ---- Premium (UC-08) ----
+const depsPremium = { store: orderStore, midtrans };
+
+// Membuat pesanan QRIS (atau memakai pesanan yang masih menunggu pembayaran).
+app.post('/api/orders', requireLogin, async (req, res) => {
+  try {
+    const order = await buatPesanan(req.user, depsPremium);
+    console.log(`PESANAN ${order.order_id} ${req.user.email} Rp ${order.amount}`);
+    res.json(publicOrder(order));
+  } catch (e) {
+    kirimGagal(res, e);
+  }
+});
+
+// Status pesanan. Backend bertanya langsung ke Midtrans; bila lunas, Premium diaktifkan di sini.
+app.get('/api/orders/:id', requireLogin, async (req, res) => {
+  try {
+    const { order, activated } = await cekPesanan(req.user, req.params.id, depsPremium);
+    if (activated) console.log(`PREMIUM AKTIF ${req.user.email} (pesanan ${order.order_id})`);
+    const user = activated ? await userFromSession(bearerToken(req), { store: userStore }) : req.user;
+    res.json({ order: publicOrder(order), user: publicUser(user) });
+  } catch (e) {
+    kirimGagal(res, e);
+  }
+});
+
+// Gambar QR pesanan. Diambil backend dari Midtrans lalu diteruskan, supaya extension
+// tidak perlu menghubungi Midtrans sendiri.
+app.get('/api/orders/:id/qr', requireLogin, async (req, res) => {
+  try {
+    const order = await orderStore.findOrder(req.params.id);
+    if (!order || order.user_id !== req.user.id || !order.qr_url) return res.status(404).json({ code: 'ORDER_NOT_FOUND', message: 'Pesanan tidak ditemukan' });
+    const qr = await midtrans.ambilGambarQr(order.qr_url);
+    res.set('Content-Type', qr.type).set('Cache-Control', 'no-store').send(qr.bytes);
   } catch (e) {
     kirimGagal(res, e);
   }
@@ -108,5 +167,6 @@ const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
   console.log(`Backend siap di http://localhost:${PORT}`);
   if (!process.env.GEMINI_API_KEY) console.log('Peringatan: GEMINI_API_KEY belum diisi di .env');
+  if (!process.env.MIDTRANS_SERVER_KEY) console.log('Catatan: MIDTRANS_SERVER_KEY belum diisi di .env (pembelian Premium belum bisa dipakai)');
   if (!process.env.GOOGLE_CLIENT_ID) console.log('Peringatan: GOOGLE_CLIENT_ID belum diisi di .env (login Google belum bisa dipakai)');
 });

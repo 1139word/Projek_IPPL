@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premium · Image Translator</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="premium.css">
+</head>
+<body class="tab">
+<main class="halaman">
+  <header class="hd"><span class="lg">T</span>Image Translator</header>
+  <h2 class="judul">Pilih paket</h2>
+
+  <div class="kolom">
+    <section class="plan">
+      <b>Free</b>
+      <div class="harga">Rp 0</div>
+      <ul id="fiturFree"><li>…</li></ul>
+    </section>
+
+    <section class="plan hi">
+      <div class="row"><b>Premium</b><span class="bdg">PAKET</span></div>
+      <div class="harga" id="hargaPremium">…</div>
+      <ul id="fiturPremium"><li>…</li></ul>
+    </section>
+
+    <!-- Kolom pembayaran: isinya berganti sesuai keadaan (memuat / QR / lunas / kedaluwarsa / gagal) -->
+    <section class="plan bayar" aria-live="polite">
+      <b>Bayar dengan QRIS</b>
+
+      <div id="sMuat" class="tengah"><div class="note">Menyiapkan pembayaran…</div></div>
+
+      <div id="sQr" class="tengah" hidden>
+        <div class="qr"><img id="qrImg" alt="Kode QR pembayaran QRIS"></div>
+        <div class="timer" id="timer">15:00</div>
+        <div class="note" id="sQrNote">Pindai dengan aplikasi e-wallet atau mobile banking. Status diperbarui otomatis.</div>
+        <div class="note kecil" id="orderId"></div>
+        <!-- Hanya mode Sandbox: alamat QR untuk ditempel di simulator.sandbox.midtrans.com -->
+        <div class="sandbox" id="sandbox" hidden>
+          <span class="note kecil">Mode uji (Sandbox): bayar lewat simulator Midtrans dengan alamat QR ini.</span>
+          <button class="btn ghost kecil" type="button" id="btnSalin">Salin alamat QR</button>
+        </div>
+      </div>
+
+      <div id="sLunas" class="tengah" hidden>
+        <div class="ico hijau">✓</div>
+        <h3>Premium aktif</h3>
+        <div class="note" id="lunasNote"></div>
+        <button class="btn" type="button" id="btnSelesai">Tutup halaman</button>
+      </div>
+
+      <div id="sHabis" class="tengah" hidden>
+        <div class="ico amber">!</div>
+        <h3 id="habisJudul">Waktu pembayaran habis</h3>
+        <div class="note" id="habisNote">QR tidak berlaku lagi dan Premium tidak diaktifkan. Tidak ada biaya yang terpotong.</div>
+        <button class="btn" type="button" id="btnUlang">Buat QR baru</button>
+      </div>
+
+      <div id="sGagal" class="tengah" hidden>
+        <div class="ico amber">!</div>
+        <h3>Pembayaran belum bisa dibuat</h3>
+        <div class="note" id="gagalNote"></div>
+        <button class="btn" type="button" id="btnCoba">Coba lagi</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="note">Satu kali bayar untuk satu periode, tidak diperpanjang otomatis. Bila halaman ini tertutup setelah Anda membayar, Premium tetap aktif: buka popup Image Translator untuk memperbaruinya.</div>
+</main>
+<script src="premium.js"></script>
+</body>
+</html>

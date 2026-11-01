@@ -230,9 +230,10 @@ async function bukaPaket() {
 // ---- Tombol ----
 document.querySelectorAll('.premium').forEach((b) => b.addEventListener('click', bukaPaket));
 $('#btnKembali').addEventListener('click', () => show('vMain'));
-// Pembayaran QRIS (UC-08) dibuat di langkah berikutnya.
+// UC-08: pembayaran QRIS dibuka di tab, karena popup tertutup begitu pengguna mengklik di luar popup.
 $('#btnBeli').addEventListener('click', () => {
-  $('#msg').textContent = 'Pembayaran QRIS sedang dibuat (langkah berikutnya tahap Premium).';
+  chrome.tabs.create({ url: chrome.runtime.getURL('premium.html') });
+  window.close();
 });
 $('#btnStandar').addEventListener('click', () => show('vMain'));
 $('#btnTutup').addEventListener('click', () => window.close());
