@@ -8,7 +8,7 @@ Menjalankan (dari folder ocr-service):
     venv\\Scripts\\python uji_ocr.py sebelum    -> hasil ke folder hasil\\sebelum\\ (untuk dibandingkan)
 
 Isi folder hasil untuk setiap gambar:
-    <nama>.png   gambar dengan kotak hijau (yakin) / oranye (ragu) dan nomor baris
+    <nama>.png   gambar dengan kotak hijau (yakin) / oranye (ragu), nomor baris, dan kotak biru (balon)
     <nama>.txt   daftar baris: nomor, skor, ukuran kotak, teks
 Ringkasan semua gambar tertulis di ringkasan.txt.
 
@@ -43,6 +43,8 @@ def simpan_gambar(path: Path, img):
 def gambar_kotak(img, lines):
     out = img.copy()
     tebal = max(1, round(max(img.shape[:2]) / 800))
+    for b in {tuple(ln["bubble"]) for ln in lines if ln.get("bubble")}:
+        cv2.rectangle(out, (b[0], b[1]), (b[0] + b[2], b[1] + b[3]), (255, 0, 0), tebal + 1)  # biru = balon
     for i, ln in enumerate(lines, 1):
         x, y, w, h = (int(round(v)) for v in ln["box"])
         warna = (0, 180, 0) if ln["score"] >= 0.8 else (0, 140, 255)  # BGR: hijau / oranye
@@ -79,7 +81,8 @@ def main():
         (HASIL / f"{path.stem}.txt").write_text("\n".join(teks) + "\n", encoding="utf-8")
 
         rata = sum(ln["score"] for ln in lines) / len(lines) if lines else 0
-        baris = f"{path.name}: {len(lines)} baris, skor rata-rata {rata:.3f}, {ms} ms"
+        dlm_balon = sum(1 for ln in lines if ln.get("bubble"))
+        baris = f"{path.name}: {len(lines)} baris ({dlm_balon} di dalam balon), skor rata-rata {rata:.3f}, {ms} ms"
         print(baris)
         ringkasan.append(baris)
 

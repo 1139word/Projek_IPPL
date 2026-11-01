@@ -26,13 +26,21 @@ async function translateImage({ image, src = 'auto', tgt = 'en', model = 'std' }
 
   const W = hasilOcr.width, H = hasilOcr.height;
   // Kotak dikirim sebagai pecahan 0..1, sehingga overlay tetap pas walau gambar ditampilkan diperkecil/diperbesar.
-  const regions = groups.map((g, i) => ({
-    box: [g.box[0] / W, g.box[1] / H, g.box[2] / W, g.box[3] / H].map((v) => Math.round(v * 10000) / 10000),
-    text: translations[i],
-    original: g.text
-  }));
+  // type: 'dialog' | 'sfx' | 'watermark' (ditandai Gemini). Extension memakai ini untuk gaya tampilan.
+  const regions = groups.map((g, i) => {
+    const t = translations[i];
+    return {
+      box: [g.box[0] / W, g.box[1] / H, g.box[2] / W, g.box[3] / H].map((v) => Math.round(v * 10000) / 10000),
+      text: typeof t === 'string' ? t : t.text,
+      type: typeof t === 'string' ? 'dialog' : t.type,
+      original: g.text,
+      dark: g.dark || false // balon hitam: extension menampilkan kotak hitam berhuruf putih
+    };
+  });
   // ocrMs = total menunggu OCR (termasuk pengiriman data); ocrProcessMs = waktu proses OCR di layanan Python.
-  return { regions, meta: { ocrMs: t1 - t0, ocrProcessMs: hasilOcr.ms, translateMs: t2 - t1, balloons: regions.length, model, tgt } };
+  const sfx = regions.filter((r) => r.type === 'sfx').length;
+  const watermark = regions.filter((r) => r.type === 'watermark').length;
+  return { regions, meta: { ocrMs: t1 - t0, ocrProcessMs: hasilOcr.ms, translateMs: t2 - t1, balloons: regions.length, sfx, watermark, model, tgt } };
 }
 
 module.exports = { translateImage, PipelineError };

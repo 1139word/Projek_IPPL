@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const http = require('node:http');
-const { groupLines } = require('../lib/group');
+const { groupLines, kotakTampil } = require('../lib/group');
 const { bacaJawaban, buatPrompt } = require('../lib/gemini');
 const { translateImage } = require('../lib/pipeline');
 
@@ -30,19 +30,49 @@ test('tulisan vertikal dibaca kanan ke kiri dan tanpa spasi', () => {
   assert.strictEqual(g[0].text, 'どこにいくの');
 });
 
+test('baris di balon yang sama digabung walau berjauhan; balon berbeda tidak digabung', () => {
+  const balonA = [100, 100, 200, 300];
+  const balonB = [305, 100, 200, 300];
+  const g = groupLines([
+    { text: 'あいう', box: [250, 150, 30, 120], bubble: balonA },
+    { text: 'えお', box: [130, 300, 30, 60], bubble: balonA },   // jauh dari baris pertama, tapi satu balon
+    { text: 'かき', box: [320, 150, 30, 120], bubble: balonB }    // dekat, tapi balon lain
+  ]);
+  assert.strictEqual(g.length, 2);
+  assert.strictEqual(g[0].text, 'あいうえお');
+  assert.deepStrictEqual(g[0].bubble, balonA);
+  assert.strictEqual(g[0].dark, false);
+});
+
+test('balon hitam ditandai dark', () => {
+  const g = groupLines([{ text: 'ねえわ', box: [120, 120, 30, 100], bubble: [100, 100, 80, 160], dark: true }]);
+  assert.strictEqual(g[0].dark, true);
+});
+
+test('kotak tampil: di balon jadi lebar, vertikal tanpa balon dilebarkan', () => {
+  // Teks vertikal sempit di tengah balon 200x300 -> kotak tampil = persegi dalam balon (70%).
+  assert.deepStrictEqual(kotakTampil([190, 150, 20, 200], [100, 100, 200, 300]), [130, 145, 140, 210]);
+  // Tanpa balon, 20x200 -> lebar 100 (dibatasi 5x lebar asli), tetap di tengah.
+  assert.deepStrictEqual(kotakTampil([100, 0, 20, 200], null), [60, 0, 100, 200]);
+  // Teks mendatar tanpa balon tidak diubah.
+  assert.deepStrictEqual(kotakTampil([0, 0, 100, 20], null), [0, 0, 100, 20]);
+});
+
 test('angka halaman dan tanda baca saja dibuang', () => {
   assert.strictEqual(groupLines([{ text: '12', box: [0, 0, 20, 20] }, { text: '!!', box: [500, 500, 20, 20] }]).length, 0);
 });
 
 test('jawaban Gemini dengan pembungkus ```json tetap terbaca', () => {
   const raw = '```json\n{"translations":[{"id":1,"text":"B"},{"id":0,"text":"A"}]}\n```';
-  assert.deepStrictEqual(bacaJawaban(raw, 2), ['A', 'B']);
+  assert.deepStrictEqual(bacaJawaban(raw, 2), [{ text: 'A', type: 'dialog' }, { text: 'B', type: 'dialog' }]);
 });
 
 test('prompt memuat semua teks dan bahasa tujuan', () => {
   const p = buatPrompt(['hello', 'bye'], 'en', 'id');
   assert.match(p, /Indonesian/);
   assert.match(p, /"text":"hello"/);
+  assert.match(p, /"sfx"/);
+  assert.match(p, /"watermark"/);
 });
 
 // ---------- alur lengkap dengan server palsu ----------
@@ -68,7 +98,7 @@ test('alur lengkap: OCR -> Gemini -> kotak pecahan 0..1', async (t) => {
     promptDiterima = body.contents[0].parts[0].text;
     assert.strictEqual(req.headers['x-goog-api-key'], 'kunci-uji');
     assert.match(req.url, /gemini-3\.5-flash-lite:generateContent/);
-    kirim(res, 200, { candidates: [{ content: { parts: [{ text: '{"translations":[{"id":0,"text":"HALO DI SANA"}]}' }] } }] });
+    kirim(res, 200, { candidates: [{ content: { parts: [{ text: '{"translations":[{"id":0,"type":"dialog","text":"HALO DI SANA"}]}' }] } }] });
   });
   t.after(() => { ocr.close(); gemini.close(); });
   process.env.OCR_URL = `http://127.0.0.1:${ocr.address().port}/ocr`;
@@ -79,6 +109,7 @@ test('alur lengkap: OCR -> Gemini -> kotak pecahan 0..1', async (t) => {
   assert.strictEqual(hasil.regions.length, 1);
   assert.strictEqual(hasil.regions[0].text, 'HALO DI SANA');
   assert.strictEqual(hasil.regions[0].original, 'HELLO THERE');
+  assert.strictEqual(hasil.regions[0].type, 'dialog');
   assert.deepStrictEqual(hasil.regions[0].box, [0.1, 0.1, 0.2, 0.0525]);
   assert.match(promptDiterima, /HELLO THERE/);
 });

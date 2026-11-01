@@ -322,7 +322,10 @@
     for (const reg of regions) {
       const [x, y, w, h] = reg.box;
       const b = document.createElement('div');
-      b.className = 'it-box';
+      // Jenis teks dari Gemini: dialog = kotak putih biasa; sfx dan watermark diberi gaya berbeda
+      // (sementara, untuk melihat apakah penandaannya sudah benar).
+      b.className = 'it-box' + (reg.type === 'sfx' ? ' it-sfx' : reg.type === 'watermark' ? ' it-wm' : '')
+        + (reg.dark ? ' it-dark' : ''); // balon hitam: kotak hitam berhuruf putih agar menyatu
       b.style.cssText = `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%`;
       const span = document.createElement('span');
       span.textContent = reg.text;

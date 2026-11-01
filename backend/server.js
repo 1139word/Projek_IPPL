@@ -86,7 +86,11 @@ app.post('/api/translate', requireLogin, async (req, res) => {
     const result = await translateImage({ image, src, tgt, model });
     const user = await chargeCredit(req.user, model, { store: userStore });
     const m = result.meta;
-    console.log(`OK  ${m.balloons} balon | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt} | ${user.email} sisa ${user.credit_left}`);
+    console.log(`OK  ${m.balloons} balon (sfx ${m.sfx}, watermark ${m.watermark}) | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt} | ${user.email} sisa ${user.credit_left}`);
+    // LOG_DETAIL=1 di .env: tampilkan setiap balon (jenis, teks hasil OCR, terjemahan) untuk diagnosis.
+    if (process.env.LOG_DETAIL === '1') {
+      for (const r of result.regions) console.log(`    [${r.type}] ${r.original}  =>  ${r.text}`);
+    }
     // Sisa credit ikut dikirim supaya popup langsung diperbarui tanpa memanggil /api/me.
     res.json({ ...result, credit: publicUser(user).credit });
   } catch (e) {

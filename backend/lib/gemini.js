@@ -28,14 +28,24 @@ function buatPrompt(texts, src, tgt) {
     'The text comes from OCR, so it may contain small recognition mistakes; infer the intended words.',
     'Keep each translation natural and short enough to fit the same bubble. Keep names as they are.',
     'If an item is already in the target language, return it unchanged.',
-    'Answer ONLY with JSON in this exact shape: {"translations":[{"id":0,"text":"..."}]}',
+    'Also classify every item with "type":',
+    '- "dialog": speech, thoughts, narration boxes, and story text such as signs or letters;',
+    '- "sfx": sound effects / onomatopoeia drawn as part of the artwork (e.g. ドン, ゴゴゴ, ぷるぷる, ざわ, BOOM, CRACK);',
+    '- "watermark": credits, artist or circle names, URLs, social media handles, copyright or "do not repost / no AI training" notices.',
+    'Translate every item whatever its type; for "sfx" give a short equivalent sound or description in the target language.',
+    'Answer ONLY with JSON in this exact shape: {"translations":[{"id":0,"type":"dialog","text":"..."}]}',
     'Return one entry for every id.',
     '',
     JSON.stringify(items)
   ].join('\n');
 }
 
+// Jenis teks yang dikenali. Jenis lain (atau tidak ada) dianggap dialog, supaya tetap ditampilkan seperti biasa.
+const JENIS = ['dialog', 'sfx', 'watermark'];
+const jenisSah = (t) => (JENIS.includes(t) ? t : 'dialog');
+
 // Gemini kadang membungkus JSON dengan ```json ... ```; bersihkan dulu sebelum di-parse.
+// Hasil: daftar { text, type } sesuai urutan id (null bila id itu tidak dijawab).
 function bacaJawaban(raw, jumlah) {
   const bersih = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
   let data;
@@ -45,7 +55,11 @@ function bacaJawaban(raw, jumlah) {
   const hasil = new Array(jumlah).fill(null);
   list.forEach((t, i) => {
     const id = Number.isInteger(t && t.id) ? t.id : i;
-    if (id >= 0 && id < jumlah) hasil[id] = typeof t === 'string' ? t : t && t.text;
+    if (id >= 0 && id < jumlah) {
+      hasil[id] = typeof t === 'string'
+        ? { text: t, type: 'dialog' }
+        : { text: t && t.text, type: jenisSah(t && t.type) };
+    }
   });
   return hasil;
 }
@@ -94,7 +108,11 @@ async function translateTexts(texts, { src = 'auto', tgt = 'en', model = 'std', 
     const { raw, finishReason } = await mintaGemini(texts, { src, tgt, model, key, fetchFn });
     try {
       const hasil = bacaJawaban(raw, texts.length);
-      return hasil.map((t, i) => (t && String(t).trim()) || texts[i]); // kalau ada yang kosong, tampilkan teks asli
+      // Kalau ada yang kosong, tampilkan teks asli sebagai dialog.
+      return hasil.map((t, i) => ({
+        text: (t && t.text && String(t.text).trim()) || texts[i],
+        type: (t && t.text && String(t.text).trim() && t.type) || 'dialog'
+      }));
     } catch (e) {
       if (e.code !== 'BAD_RESPONSE') throw e;
       // Catat penyebabnya agar bisa dianalisis: finishReason MAX_TOKENS = terpotong, SAFETY = diblokir.
@@ -104,4 +122,4 @@ async function translateTexts(texts, { src = 'auto', tgt = 'en', model = 'std', 
   }
 }
 
-module.exports = { translateTexts, buatPrompt, bacaJawaban, modelName, GeminiError };
+module.exports = { translateTexts, buatPrompt, bacaJawaban, modelName, GeminiError, JENIS };
