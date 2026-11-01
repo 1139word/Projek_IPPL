@@ -135,3 +135,13 @@ test('API key salah diterjemahkan menjadi BAD_API_KEY', async (t) => {
     (e) => e.code === 'BAD_API_KEY'
   );
 });
+
+test('teks vertikal di luar balon mendapat minBox (kotak awal kecil), di dalam balon tidak', () => {
+  const [luar] = groupLines([{ text: 'あァ?', box: [100, 0, 20, 200] }]);
+  assert.deepStrictEqual(luar.minBox, [100, 0, 20, 200]);
+  assert.deepStrictEqual(luar.box, [60, 0, 100, 200]);
+  const [dalam] = groupLines([{ text: 'ねえ', box: [190, 150, 20, 200], bubble: [100, 100, 200, 300] }]);
+  assert.strictEqual(dalam.minBox, null);
+  const [datar] = groupLines([{ text: 'HUH', box: [0, 0, 100, 20] }]);
+  assert.strictEqual(datar.minBox, null); // kotak tampil = kotak teks, tidak ada yang perlu ditumbuhkan
+});

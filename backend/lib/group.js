@@ -7,8 +7,10 @@
 // Masukan: [{ text, box: [x, y, lebar, tinggi], bubble?: [x, y, lebar, tinggi] | null }]  (piksel)
 //   bubble = kotak balon yang melingkupi baris itu (dideteksi layanan OCR), bila ada.
 //   dark   = true bila balonnya hitam (teks putih di atas hitam).
-// Keluaran: [{ text, box: [x, y, lebar, tinggi], textBox, bubble, dark, lines: jumlah baris }]
+// Keluaran: [{ text, box: [x, y, lebar, tinggi], minBox, textBox, bubble, dark, lines: jumlah baris }]
 //   box     = kotak untuk menampilkan terjemahan (bisa lebih lebar dari teks asli, lihat kotakTampil)
+//   minBox  = hanya untuk teks di luar balon: kotak terkecil (= teks asli). Extension memulai dari
+//             minBox lalu membesarkannya ke arah box hanya sejauh yang dibutuhkan terjemahan.
 //   textBox = kotak gabungan teks asli
 
 const CJK = /[぀-ヿ㐀-鿿가-힯]/; // Jepang, Mandarin, Korea
@@ -102,7 +104,11 @@ function groupLines(lines) {
     const dalamBalon = items.find((l) => l.bubble) || {};
     const bubble = dalamBalon.bubble || null;
     const dark = Boolean(bubble && dalamBalon.dark);
-    hasil.push({ text, box: kotakTampil(textBox, bubble), textBox, bubble, dark, lines: items.length });
+    const box = kotakTampil(textBox, bubble);
+    // Di luar balon tidak ada batas alami, jadi kotak dibiarkan tumbuh secukupnya di extension
+    // (minBox -> box), bukan langsung selebar box yang bisa menutupi gambar terlalu banyak.
+    const minBox = !bubble && box.some((v, i) => v !== textBox[i]) ? textBox : null;
+    hasil.push({ text, box, minBox, textBox, bubble, dark, lines: items.length });
   }
   // Urutkan balon dari atas ke bawah agar terjemahan konteksnya berurutan.
   return hasil.sort((a, b) => a.textBox[1] - b.textBox[1] || a.textBox[0] - b.textBox[0]);

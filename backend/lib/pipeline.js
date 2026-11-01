@@ -25,12 +25,15 @@ async function translateImage({ image, src = 'auto', tgt = 'en', model = 'std' }
   const t2 = Date.now();
 
   const W = hasilOcr.width, H = hasilOcr.height;
+  const pecahan = (b) => [b[0] / W, b[1] / H, b[2] / W, b[3] / H].map((v) => Math.round(v * 10000) / 10000);
   // Kotak dikirim sebagai pecahan 0..1, sehingga overlay tetap pas walau gambar ditampilkan diperkecil/diperbesar.
   // type: 'dialog' | 'sfx' | 'watermark' (ditandai Gemini). Extension memakai ini untuk gaya tampilan.
   const regions = groups.map((g, i) => {
     const t = translations[i];
     return {
-      box: [g.box[0] / W, g.box[1] / H, g.box[2] / W, g.box[3] / H].map((v) => Math.round(v * 10000) / 10000),
+      box: pecahan(g.box),
+      // Teks di luar balon: kotak awal yang kecil; extension membesarkannya ke arah box bila perlu.
+      ...(g.minBox ? { minBox: pecahan(g.minBox) } : {}),
       text: typeof t === 'string' ? t : t.text,
       type: typeof t === 'string' ? 'dialog' : t.type,
       original: g.text,

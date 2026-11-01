@@ -122,20 +122,41 @@
   // Perkecil huruf sampai teks muat di dalam kotaknya.
   // scrollWidth dipakai agar satu kata tidak dipotong di tengah ("Benarka/h"): kata yang lebih lebar
   // dari kotak membuat ukuran huruf diperkecil, bukan katanya dipenggal.
+  // Mengembalikan ukuran huruf terbesar yang muat (px).
+  function ukuranMuat(box, span) {
+    span.classList.remove('wrapany');
+    const maxW = box.clientWidth - 8, maxH = box.clientHeight - 4;
+    const muat = () => span.scrollWidth <= maxW + 1 && span.offsetHeight <= maxH;
+    let lo = 7, hi = 28;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      box.style.fontSize = mid + 'px';
+      if (muat()) lo = mid; else hi = mid - 1;
+    }
+    box.style.fontSize = lo + 'px';
+    if (!muat()) span.classList.add('wrapany'); // kotak terlalu sempit: terpaksa memotong kata
+    return lo;
+  }
+  // Kotak teks di luar balon (punya minBox) dimulai dari ukuran teks asli, lalu dibesarkan bertahap
+  // ke arah kotak maksimum hanya sampai huruf terjemahan cukup besar untuk dibaca (HURUF_MIN).
+  // Dengan begitu "Huh?" di kolom sempit tidak lagi mendapat kotak putih besar yang menutupi gambar.
+  const HURUF_MIN = 12, LANGKAH_TUMBUH = 6;
+  function setKotak(box, r) {
+    box.style.left = r[0] * 100 + '%';
+    box.style.top = r[1] * 100 + '%';
+    box.style.width = r[2] * 100 + '%';
+    box.style.height = r[3] * 100 + '%';
+  }
   function fitText(layer) {
     for (const box of layer.children) {
       const span = box.firstChild;
-      span.classList.remove('wrapany');
-      const maxW = box.clientWidth - 8, maxH = box.clientHeight - 4;
-      const muat = () => span.scrollWidth <= maxW + 1 && span.offsetHeight <= maxH;
-      let lo = 7, hi = 28;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        box.style.fontSize = mid + 'px';
-        if (muat()) lo = mid; else hi = mid - 1;
+      if (!box._min) { ukuranMuat(box, span); continue; }
+      const a = box._min, b = box._max;
+      for (let k = 0; k <= LANGKAH_TUMBUH; k++) {
+        const t = k / LANGKAH_TUMBUH;
+        setKotak(box, a.map((v, i) => v + (b[i] - v) * t));
+        if (ukuranMuat(box, span) >= HURUF_MIN) break;
       }
-      box.style.fontSize = lo + 'px';
-      if (!muat()) span.classList.add('wrapany'); // kotak terlalu sempit: terpaksa memotong kata
     }
   }
 
@@ -327,6 +348,7 @@
       b.className = 'it-box' + (reg.type === 'sfx' ? ' it-sfx' : reg.type === 'watermark' ? ' it-wm' : '')
         + (reg.dark ? ' it-dark' : ''); // balon hitam: kotak hitam berhuruf putih agar menyatu
       b.style.cssText = `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%`;
+      if (reg.minBox) { b._min = reg.minBox; b._max = reg.box; setKotak(b, reg.minBox); } // tumbuh secukupnya, lihat fitText
       const span = document.createElement('span');
       span.textContent = reg.text;
       b.appendChild(span);
@@ -407,8 +429,8 @@
   function toFull(regions, v) {
     const f = v.full, vw = v.r - v.l, vh = v.b - v.t;
     return regions.map((g) => {
-      const [x, y, w, h] = g.box;
-      return { ...g, box: [(v.l + x * vw - f.left) / f.width, (v.t + y * vh - f.top) / f.height, (w * vw) / f.width, (h * vh) / f.height] };
+      const ubah = ([x, y, w, h]) => [(v.l + x * vw - f.left) / f.width, (v.t + y * vh - f.top) / f.height, (w * vw) / f.width, (h * vh) / f.height];
+      return { ...g, box: ubah(g.box), ...(g.minBox ? { minBox: ubah(g.minBox) } : {}) };
     });
   }
 
