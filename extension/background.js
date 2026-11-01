@@ -243,6 +243,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     logoutAkun().then(sendResponse);
     return true;
   }
+  if (msg && msg.type === 'plans') {
+    // UC-07: info paket (harga, kuota, fitur). Tidak perlu login.
+    callApi('GET', '/api/plans')
+      .then((r) => sendResponse(r.status === 200 ? { ok: true, plans: r.data } : { ok: false, message: 'Info paket tidak bisa diambil dari server.' }))
+      .catch(() => sendResponse({ ok: false, message: 'Server tidak bisa dihubungi. Pastikan backend menyala.' }));
+    return true;
+  }
   if (msg && msg.type === 'me') {
     refreshMe().then(sendResponse);
     return true;

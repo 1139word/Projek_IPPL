@@ -35,6 +35,9 @@
     <button class="btn" type="button" id="btnLogin">Masuk dengan Google</button>
   </section>
 
+  <!-- Status Premium (hanya untuk akun Premium) -->
+  <div class="row start" id="premiumRow" hidden><span class="bdg">PREMIUM</span><span class="note" id="premiumUntil"></span></div>
+
   <!-- Credit mingguan: tampil di atas setelah login -->
   <section id="creditBox" hidden>
     <div class="row"><span class="lbl">Credit mingguan</span><span class="lbl strong" id="creditText">… / …</span></div>
@@ -59,7 +62,7 @@
       <div class="dd" role="listbox" hidden></div>
     </div>
     <div class="saved" id="saved" aria-live="polite"></div>
-    <button class="btn ghost premium" type="button">Upgrade ke Premium</button>
+    <button class="btn ghost premium" type="button" id="btnUpgrade">Upgrade ke Premium</button>
     <div class="note c" id="resetNote"></div>
   </section>
 
@@ -79,6 +82,23 @@
     <div class="note c">Hasil lebih akurat untuk teks sulit dan tulisan tangan. Berlangganan untuk memakainya.</div>
     <button class="btn premium" type="button">Lihat paket Premium</button>
     <button class="btn ghost" type="button" id="btnStandar">Tetap pakai Standar</button>
+  </section>
+
+  <!-- UC-07 Paket Premium: isi diambil dari server (/api/plans) -->
+  <section class="view" id="vPaket" hidden>
+    <h2>Premium</h2>
+    <div class="card">
+      <div class="row"><b>Free</b><span class="note" id="paketFreeNow">saat ini</span></div>
+      <div class="note" id="paketFree">…</div>
+    </div>
+    <div class="card hi">
+      <div class="row"><b>Premium</b><span class="bdg">PAKET</span></div>
+      <div class="price" id="paketHarga">…</div>
+      <ul class="fit" id="paketPremium"></ul>
+    </div>
+    <div class="note" id="paketBayar">Dibayar dengan QRIS (Midtrans). Satu kali bayar untuk satu periode, tidak diperpanjang otomatis.</div>
+    <button class="btn" type="button" id="btnBeli">Beli Premium (buka di tab)</button>
+    <button class="btn ghost" type="button" id="btnKembali">Kembali</button>
   </section>
 
   <div class="note c info" id="msg" aria-live="polite"></div>

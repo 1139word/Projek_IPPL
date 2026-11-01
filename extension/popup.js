@@ -22,7 +22,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 
 // ---- Pindah tampilan (utama / credit habis / Advanced khusus Premium) ----
 function show(view) {
-  for (const id of ['vLogin', 'vMain', 'vHabis', 'vAdv']) $('#' + id).hidden = id !== view;
+  for (const id of ['vLogin', 'vMain', 'vHabis', 'vAdv', 'vPaket']) $('#' + id).hidden = id !== view;
   $('#msg').textContent = '';
 }
 
@@ -132,8 +132,9 @@ function renderAkun(session) {
     const planBerubah = plan !== user.plan;
     plan = user.plan;
     // Baru dibuka atau baru saja login: tampilkan pengaturan (renderCredit bisa menggantinya dengan "credit habis").
-    if (!['vMain', 'vHabis', 'vAdv'].some((id) => !$('#' + id).hidden)) show('vMain');
+    if (!['vMain', 'vHabis', 'vAdv', 'vPaket'].some((id) => !$('#' + id).hidden)) show('vMain');
     renderCredit(user.credit);
+    renderPlan(user);
     if (planBerubah) render(); // lencana PREMIUM di pilihan model mengikuti paket akun
     $('#akunEmail').textContent = user.email;
     av.title = user.email;
@@ -150,6 +151,7 @@ function renderAkun(session) {
     $('#tos').textContent = '';
   } else {
     plan = 'free';
+    $('#premiumRow').hidden = true;
     show('vLogin');
     av.innerHTML = AVATAR_DEFAULT;
     av.title = 'Belum login';
@@ -185,11 +187,53 @@ $('#tgl').addEventListener('click', () => {
 });
 chrome.storage.sync.get({ enabled: true }).then((v) => renderTgl(v.enabled !== false));
 
+// ---- Premium (UC-07) ----
+const tanggal = (iso) => new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
+
+// Akun Premium: lencana + tanggal berakhir di atas, tombol Upgrade diganti tombol melihat paket.
+function renderPlan(user) {
+  const premium = user.plan === 'premium';
+  $('#premiumRow').hidden = !premium;
+  $('#premiumUntil').textContent = premium && user.premiumUntil ? `Aktif sampai ${tanggal(user.premiumUntil)}` : '';
+  $('#btnUpgrade').textContent = premium ? 'Lihat paket Premium' : 'Upgrade ke Premium';
+}
+
+async function bukaPaket() {
+  show('vPaket');
+  const premium = plan === 'premium';
+  // A4: Premium sudah aktif -> tampilkan status, tidak diarahkan membayar lagi.
+  $('#btnBeli').hidden = premium;
+  $('#paketFreeNow').textContent = premium ? '' : 'saat ini';
+  const res = await chrome.runtime.sendMessage({ type: 'plans' });
+  if (!res || !res.ok) { $('#msg').textContent = (res && res.message) || 'Info paket tidak bisa diambil dari server.'; return; }
+  const { free, premium: p } = res.plans;
+  $('#paketFree').textContent = `${free.quota} credit per minggu · ${free.features[0]}`;
+  $('#paketHarga').innerHTML = '';
+  $('#paketHarga').append(rupiah(p.price) + ' ');
+  const per = document.createElement('span');
+  per.className = 'note';
+  per.textContent = `/ ${p.days} hari`;
+  $('#paketHarga').append(per);
+  $('#paketPremium').replaceChildren(...[`${p.quota} credit per minggu`, ...p.features].map((t) => {
+    const li = document.createElement('li');
+    li.textContent = t;
+    return li;
+  }));
+  const { session } = await chrome.storage.local.get('session');
+  const until = session && session.user && session.user.premiumUntil;
+  $('#paketBayar').textContent = premium && until
+    ? `Premium Anda aktif sampai ${tanggal(until)}. Paket bisa dibeli lagi setelah masa aktif berakhir.`
+    : 'Dibayar dengan QRIS (Midtrans). Satu kali bayar untuk satu periode, tidak diperpanjang otomatis.';
+}
+
 // ---- Tombol ----
-// Paket Premium dan pembayaran QRIS belum dibuat (menunggu sistem akun).
-document.querySelectorAll('.premium').forEach((b) => b.addEventListener('click', () => {
-  $('#msg').textContent = 'Paket Premium dan pembayaran QRIS dibuat setelah sistem akun selesai.';
-}));
+document.querySelectorAll('.premium').forEach((b) => b.addEventListener('click', bukaPaket));
+$('#btnKembali').addEventListener('click', () => show('vMain'));
+// Pembayaran QRIS (UC-08) dibuat di langkah berikutnya.
+$('#btnBeli').addEventListener('click', () => {
+  $('#msg').textContent = 'Pembayaran QRIS sedang dibuat (langkah berikutnya tahap Premium).';
+});
 $('#btnStandar').addEventListener('click', () => show('vMain'));
 $('#btnTutup').addEventListener('click', () => window.close());
 

@@ -1,4 +1,4 @@
--- Struktur database Image Translator (tahap akun dan credit).
+-- Struktur database Image Translator (tahap akun, credit, dan Premium).
 -- Dijalankan oleh root dari folder proyek: masuk dengan  mysql -u root -p  lalu ketik  SOURCE backend/db/schema.sql;
 -- Aman dijalankan ulang: yang sudah ada tidak dibuat dua kali dan datanya tidak dihapus.
 
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   email           VARCHAR(320)    NOT NULL,
   picture_url     VARCHAR(2048)   NULL,
   plan            ENUM('free', 'premium') NOT NULL DEFAULT 'free',
+  premium_until   DATETIME        NULL,                  -- Premium aktif sampai kapan (NULL = tidak Premium)
   credit_left     INT UNSIGNED    NOT NULL,              -- sisa credit periode ini
   credit_reset_at DATETIME        NOT NULL,              -- saat credit diisi ulang ke kuota paket
   created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

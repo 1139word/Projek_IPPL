@@ -111,3 +111,49 @@ test('credit kembali ke kuota setelah seminggu, tidak terakumulasi', async () =>
   assert.strictEqual(u.credit_left, 10); // kembali ke 10, bukan 3 + 10
   assert.strictEqual(new Date(u.credit_reset_at).getTime(), j.now().getTime() + WEEK_MS);
 });
+
+// ---- Premium berakhir ----
+const { refreshPlan, publicUser } = require('../lib/auth');
+
+function storePremium() {
+  const panggilan = [];
+  return { panggilan, async endPremium(id, d) { panggilan.push({ id, ...d }); } };
+}
+
+test('Premium yang masih aktif tidak berubah dan tanggalnya dikirim ke extension', async () => {
+  const store = storePremium();
+  const user = { id: 1, plan: 'premium', premium_until: new Date('2026-12-01T00:00:00Z'), credit_left: 80, credit_reset_at: new Date('2026-11-08T00:00:00Z') };
+  const hasil = await refreshPlan(user, { store, now: () => new Date('2026-11-20T00:00:00Z') });
+  assert.strictEqual(hasil.plan, 'premium');
+  assert.strictEqual(store.panggilan.length, 0);
+  assert.strictEqual(publicUser(hasil).premiumUntil, '2026-12-01T00:00:00.000Z');
+  assert.strictEqual(publicUser(hasil).credit.quota, 100);
+});
+
+test('Premium yang sudah lewat kembali Free dan sisa credit dipotong ke kuota Free', async () => {
+  const store = storePremium();
+  const user = { id: 7, plan: 'premium', premium_until: new Date('2026-12-01T00:00:00Z'), credit_left: 80, credit_reset_at: new Date('2026-12-05T00:00:00Z') };
+  const hasil = await refreshPlan(user, { store, now: () => new Date('2026-12-01T00:00:01Z') });
+  assert.strictEqual(hasil.plan, 'free');
+  assert.strictEqual(hasil.credit_left, 10);
+  assert.deepStrictEqual(store.panggilan, [{ id: 7, creditLeft: 10 }]);
+  assert.strictEqual(publicUser(hasil).premiumUntil, null);
+});
+
+test('akun Free tidak disentuh oleh pengecekan Premium', async () => {
+  const store = storePremium();
+  const user = { id: 2, plan: 'free', premium_until: null, credit_left: 3 };
+  assert.strictEqual(await refreshPlan(user, { store, now: () => new Date() }), user);
+  assert.strictEqual(store.panggilan.length, 0);
+});
+
+test('info paket membaca harga dan lama Premium dari .env', () => {
+  const { infoPaket } = require('../lib/paket');
+  process.env.PREMIUM_PRICE = '25000';
+  process.env.PREMIUM_DAYS = '30';
+  const p = infoPaket();
+  assert.strictEqual(p.premium.price, 25000);
+  assert.strictEqual(p.premium.days, 30);
+  assert.strictEqual(p.free.quota, 10);
+  assert.strictEqual(p.premium.quota, 100);
+});

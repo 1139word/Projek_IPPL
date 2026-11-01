@@ -41,6 +41,14 @@ const userStore = {
     return res.affectedRows === 1;
   },
 
+  // Premium berakhir: kembali Free. Syarat plan = 'premium' membuat perintah ini aman bila terpanggil dua kali.
+  async endPremium(userId, { creditLeft }) {
+    await pool.query(
+      "UPDATE users SET plan = 'free', premium_until = NULL, credit_left = LEAST(credit_left, ?) WHERE id = ? AND plan = 'premium'",
+      [creditLeft, userId]
+    );
+  },
+
   async insertSession({ tokenHash, userId, expiresAt }) {
     await pool.query('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', [tokenHash, userId, expiresAt]);
   },

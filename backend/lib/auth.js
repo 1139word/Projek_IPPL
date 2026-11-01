@@ -1,4 +1,5 @@
-// Logika akun: login Google (membuat akun bila belum ada), sesi, logout, dan reset credit mingguan.
+// Logika akun: login Google (membuat akun bila belum ada), sesi, logout, reset credit mingguan,
+// dan berakhirnya Premium.
 // Tidak memanggil Google dan tidak menulis SQL. Keduanya diterima dari luar (deps),
 // sehingga bisa diuji dengan pengganti palsu seperti pipeline.js.
 
@@ -28,8 +29,21 @@ function publicUser(user) {
     email: user.email,
     picture: user.picture_url,
     plan: user.plan,
+    // Tanggal berakhirnya Premium (teks ISO), atau null untuk akun Free.
+    premiumUntil: user.plan === 'premium' && user.premium_until ? new Date(user.premium_until).toISOString() : null,
     credit: { left: user.credit_left, quota: quotaFor(user.plan), resetAt: new Date(user.credit_reset_at).toISOString() }
   };
+}
+
+// Premium berakhir "malas", sama seperti reset credit: dicek setiap kali data akun dibaca.
+// Bila premium_until sudah lewat, akun kembali Free. Sisa credit dipotong ke kuota Free supaya
+// pengguna yang baru selesai Premium tidak membawa sisa 100 credit ke paket Free.
+async function refreshPlan(user, { store, now }) {
+  if (user.plan !== 'premium') return user;
+  if (user.premium_until && now() < new Date(user.premium_until)) return user;
+  const creditLeft = Math.min(user.credit_left, quotaFor('free'));
+  await store.endPremium(user.id, { creditLeft });
+  return { ...user, plan: 'free', premium_until: null, credit_left: creditLeft };
 }
 
 // Reset "malas": dicek setiap kali credit dibaca. Credit dikembalikan ke kuota, tidak ditambah.
@@ -61,7 +75,7 @@ async function loginWithGoogle(accessToken, deps) {
     await store.updateProfile(user.id, { email: profile.email, pictureUrl: profile.picture || null });
     user = { ...user, email: profile.email, picture_url: profile.picture || null };
   }
-  user = await refreshCredit(user, { store, now });
+  user = await refreshCredit(await refreshPlan(user, { store, now }), { store, now });
 
   // 32 byte acak = 256 bit, ditulis sebagai teks base64url agar aman dikirim di header.
   const token = crypto.randomBytes(32).toString('base64url');
@@ -80,11 +94,11 @@ async function userFromSession(token, deps) {
     await store.deleteSession(tokenHash); // sesi kedaluwarsa dibersihkan
     return null;
   }
-  return refreshCredit(row, { store, now });
+  return refreshCredit(await refreshPlan(row, { store, now }), { store, now });
 }
 
 async function logout(token, { store }) {
   if (token) await store.deleteSession(hashToken(token));
 }
 
-module.exports = { loginWithGoogle, userFromSession, logout, publicUser, hashToken, quotaFor, AuthError, WEEK_MS, SESSION_MS };
+module.exports = { loginWithGoogle, userFromSession, logout, publicUser, refreshPlan, hashToken, quotaFor, AuthError, WEEK_MS, SESSION_MS };

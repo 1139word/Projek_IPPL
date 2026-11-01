@@ -9,6 +9,7 @@ const { loginWithGoogle, userFromSession, logout, publicUser } = require('./lib/
 const { userStore } = require('./lib/auth-store');
 const { verifyGoogleToken } = require('./lib/google');
 const { checkCredit, chargeCredit } = require('./lib/credit');
+const { infoPaket } = require('./lib/paket');
 
 const app = express();
 app.use(express.json({ limit: '25mb' })); // gambar dikirim sebagai base64, jadi ukurannya bisa besar
@@ -66,6 +67,9 @@ app.post('/api/auth/google', async (req, res) => {
 
 // UC-02 Melihat credit: data akun untuk popup.
 app.get('/api/me', requireLogin, (req, res) => res.json(publicUser(req.user)));
+
+// UC-07 Melihat Paket Premium: harga, kuota, dan fitur tiap paket. Tidak perlu login.
+app.get('/api/plans', (req, res) => res.json(infoPaket()));
 
 app.post('/api/auth/logout', async (req, res) => {
   try {
