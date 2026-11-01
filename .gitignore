@@ -4,3 +4,5 @@ venv/
 __pycache__/
 *.pyc
 extension-key.pem
+ocr-service/sampel/
+ocr-service/hasil/

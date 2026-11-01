@@ -1,1 +1,2 @@
-rapidocr_onnxruntime
+rapidocr==3.10.0
+onnxruntime

@@ -12,11 +12,38 @@ async function getSettings() {
   return { ...DEFAULTS, ...s };
 }
 
-async function imageToBase64(url) {
+// Banyak situs (misalnya Pixiv, i.pximg.net) menolak unduhan gambar yang tidak membawa Referer
+// dari halaman mereka sendiri. fetch() di service worker tidak boleh mengisi header Referer sendiri,
+// jadi dipakai aturan declarativeNetRequest: khusus permintaan milik extension (tabIds = -1,
+// bukan permintaan dari tab mana pun) ke host gambar itu, Referer diisi alamat situs tempat gambar tampil.
+// Dengan begitu gambar diunduh utuh (kualitas asli, seluruh halaman), tidak perlu potret layar.
+const ATURAN_REFERER = 1;
+async function setReferer(imageUrl, pageUrl) {
+  if (!chrome.declarativeNetRequest || !pageUrl || !/^https?:/.test(pageUrl)) return;
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [ATURAN_REFERER],
+    addRules: [{
+      id: ATURAN_REFERER,
+      priority: 1,
+      action: {
+        type: 'modifyHeaders',
+        requestHeaders: [{ header: 'referer', operation: 'set', value: new URL(pageUrl).origin + '/' }]
+      },
+      condition: {
+        requestDomains: [new URL(imageUrl).hostname],
+        tabIds: [chrome.tabs.TAB_ID_NONE],
+        resourceTypes: ['xmlhttprequest', 'other']
+      }
+    }]
+  });
+}
+
+async function imageToBase64(url, pageUrl) {
   // Alamat blob: hanya bisa dibaca oleh halaman yang membuatnya (misalnya MANGA Plus).
   // Langsung tolak tanpa fetch, supaya Chrome tidak mencatatnya sebagai error extension;
   // content script lalu memakai cara cadangan (potret layar).
   if (!url || url.startsWith('blob:')) throw new Error('Alamat gambar tidak bisa diunduh dari extension');
+  try { await setReferer(url, pageUrl); } catch (e) { console.warn('Aturan Referer gagal dipasang:', e); }
   const res = await fetch(url);
   if (!res.ok) throw new Error('Gambar tidak bisa diunduh');
   const buf = await res.arrayBuffer();
@@ -183,7 +210,7 @@ async function refreshMe() {
 }
 
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.
-async function translate(msg) {
+async function translate(msg, pageUrl) {
   if (MOCK) {
     await new Promise((r) => setTimeout(r, 1200));
     return { ok: true, ...mockResult(await getSettings()) };
@@ -195,7 +222,7 @@ async function translate(msg) {
   if (!image) {
     try {
       if (String(msg.imageUrl).startsWith('blob:')) throw new Error('blob'); // tidak bisa dibaca dari service worker
-      image = await imageToBase64(msg.imageUrl);
+      image = await imageToBase64(msg.imageUrl, pageUrl);
     } catch (e) {
       return { ok: false, code: 'IMAGE_FETCH', message: 'Gambar tidak bisa diambil dari situs ini (situs memblokir unduhan gambar). Coba gambar atau situs lain.' };
     }
@@ -205,7 +232,7 @@ async function translate(msg) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === 'translate') {
-    translate(msg).then(sendResponse);
+    translate(msg, _sender.tab && _sender.tab.url).then(sendResponse);
     return true; // respons asinkron
   }
   if (msg && msg.type === 'login') {

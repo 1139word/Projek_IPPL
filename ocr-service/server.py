@@ -3,9 +3,11 @@
 Tugasnya hanya satu: menerima gambar (base64) lalu mengembalikan teks beserta posisinya.
 Backend Node.js yang memanggil layanan ini; extension tidak pernah memanggilnya langsung.
 
-Sementara memakai RapidOCR (model PaddleOCR versi ONNX) karena mudah dipasang di Windows.
-Setelah UTS, isi fungsi `baca_teks` bisa diganti ke PaddleOCR penuh tanpa mengubah backend,
-selama bentuk jawabannya tetap sama.
+Memakai RapidOCR 3 (model PaddleOCR versi ONNX, mudah dipasang di Windows) dengan model
+PP-OCRv6 small. Model ini membaca Mandarin, Inggris, dan Jepang (termasuk teks vertikal manga)
+dalam satu model, dan sudah ikut terpasang bersama paket pip, jadi tidak perlu unduh terpisah.
+Sebelumnya (rapidocr_onnxruntime 1.x, PP-OCRv4) huruf kana Jepang tidak terbaca (masalah M4).
+Bila suatu saat model diganti lagi, cukup ubah fungsi `baca_teks`; bentuk jawabannya harus tetap sama.
 
 Menjalankan:  python server.py
 Alamat:       http://127.0.0.1:5001/ocr   (POST)   dan   /health   (GET)
@@ -18,13 +20,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
 import numpy as np
-from rapidocr_onnxruntime import RapidOCR
+from rapidocr import RapidOCR
 
 HOST, PORT = "127.0.0.1", 5001
 MIN_SCORE = 0.5  # hasil OCR dengan keyakinan di bawah ini dibuang (biasanya noise)
 
 print("Memuat model OCR... (pertama kali agak lama)")
-engine = RapidOCR()  # model dimuat sekali saja, lalu dipakai untuk semua permintaan
+# Model dimuat sekali saja, lalu dipakai untuk semua permintaan. Bawaan RapidOCR 3.10 = PP-OCRv6 small.
+engine = RapidOCR(params={"Global.log_level": "warning"})
 kunci_ocr = threading.Lock()  # satu gambar diproses pada satu waktu agar model tidak dipakai bersamaan
 
 
@@ -47,9 +50,11 @@ def decode_gambar(b64: str):
 def baca_teks(img):
     """Jalankan OCR. Hasil: daftar baris teks dengan kotak [x, y, lebar, tinggi] dalam piksel."""
     with kunci_ocr:
-        result, _ = engine(img)  # result = [[4 titik sudut, teks, skor], ...] atau None
+        hasil = engine(img)  # hasil.boxes = 4 titik sudut per baris, hasil.txts = teks, hasil.scores = skor
     lines = []
-    for box, text, score in result or []:
+    if hasil.boxes is None:  # tidak ada teks sama sekali
+        return lines
+    for box, text, score in zip(hasil.boxes, hasil.txts, hasil.scores):
         if float(score) < MIN_SCORE or not str(text).strip():
             continue
         xs = [p[0] for p in box]
