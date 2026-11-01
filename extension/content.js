@@ -210,6 +210,11 @@
       if (s.bar) {
         s.bar.style.display = v.ok ? '' : 'none';
         put(s.bar, v.l + 12, v.b - s.bar.offsetHeight - 12);
+        // Bar "Tampilkan asli / Tutup hasil" hanya muncul saat kursor berada di atas gambar ini,
+        // supaya tidak menutupi hasil terjemahan di bagian bawah gambar. Bar sendiri ada di dalam
+        // area gambar, jadi bar tetap terlihat saat kursor bergerak ke tombolnya.
+        const over = lastPt && lastPt.x >= v.l && lastPt.x <= v.r && lastPt.y >= v.t && lastPt.y <= v.b;
+        s.bar.classList.toggle('hid', !over);
       }
       if (s.err) put(s.err, v.l + 12, v.t + 12);
       if (s.layer && (s.w !== f.width || s.h !== f.height)) {
