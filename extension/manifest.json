@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2oLhm8BFZMNts5WtftOw16Ocsagz41jVGdSuqR6Z5ZrqeFXALpCs5+2CZLoD/eYlZvWHOVK9XShbV4ZD73lxdJWqRjyH/syBxk/FGx8ORLan4sE8TxQNxenzBM8IT2ulkfATeio1ug+nugkw5wh6oHkAvd3APZwJHTqR27kbSJ29/9GwWTRaZ40kL8NjatpTNVeB/w/cSzqANxBAkywNr9LLJYyTHOix44zMgerD6p5KMlQQnpDdMps4ICm7B7sd8Rym72y2XqyiDXuglF3rI0Dz5UbL0fYES8bEIkvjdoPcsh7HQrnI+ucB4ES3jCzS5n4wzpBxrVPiNZxSbFTG0wIDAQAB",
   "name": "Image Translator (nama sementara)",
   "version": "0.1.0",
   "description": "Terjemahkan teks pada gambar komik langsung di halaman.",
