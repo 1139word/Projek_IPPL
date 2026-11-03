@@ -11,7 +11,7 @@ const LANGS = [
 const OPTIONS = {
   src: [['auto', 'Deteksi otomatis']].concat(LANGS),
   tgt: LANGS,
-  model: [['std', 'Gemini Standar', '1 credit', false], ['adv', 'Gemini Advanced', '2 credit', true]]
+  model: [['std', 'Gemini Standar', '1 credit', false], ['adv', 'Gemini Advanced', '1 credit', true]]
 };
 const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
 let plan = 'free'; // diisi dari akun setelah login

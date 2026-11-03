@@ -19,9 +19,9 @@ function storePalsu(users) {
   };
 }
 
-test('Standar butuh 1 credit, Advanced 2 credit', () => {
+test('Standar dan Advanced sama-sama butuh 1 credit', () => {
   assert.strictEqual(checkCredit(free(10), 'std'), 1);
-  assert.strictEqual(checkCredit(premium(10), 'adv'), 2);
+  assert.strictEqual(checkCredit(premium(10), 'adv'), 1);
 });
 
 test('akun Free tidak boleh memakai Advanced walau credit cukup', () => {
@@ -37,7 +37,7 @@ test('File Explorer khusus Premium (UC Premium: terjemahkan dari File Explorer)'
 
 test('credit kurang dari biaya ditolak sebelum menerjemahkan', () => {
   assert.throws(() => checkCredit(free(0), 'std'), { code: 'NO_CREDIT', status: 402 });
-  assert.throws(() => checkCredit(premium(1), 'adv'), { code: 'NO_CREDIT' });
+  assert.throws(() => checkCredit(premium(0), 'adv'), { code: 'NO_CREDIT' });
 });
 
 test('model yang tidak dikenal ditolak', () => {
@@ -50,7 +50,7 @@ test('credit dipotong sesuai biaya model', async () => {
   const store = storePalsu(users);
   // Salinan, seperti req.user yang dibaca dari database sebelum dipotong.
   assert.strictEqual((await chargeCredit({ ...users[0] }, 'std', { store })).credit_left, 9);
-  assert.strictEqual((await chargeCredit({ ...users[1] }, 'adv', { store })).credit_left, 98);
+  assert.strictEqual((await chargeCredit({ ...users[1] }, 'adv', { store })).credit_left, 99);
   assert.strictEqual(users[0].credit_left, 9);
 });
 

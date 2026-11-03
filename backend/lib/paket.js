@@ -9,7 +9,7 @@ function premiumDays() {
 }
 
 function premiumPrice() {
-  return Number(process.env.PREMIUM_PRICE) || 25000;
+  return Number(process.env.PREMIUM_PRICE) || 30000;
 }
 
 // Data yang ditampilkan popup. Daftar fitur ditulis di sini supaya popup dan halaman pembayaran

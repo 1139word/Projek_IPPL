@@ -9,7 +9,7 @@ Ringkasan keputusan teknologi proyek. Dokumen SRS, SDD, dan catatan lain disimpa
 | Extension | Chrome Manifest V3, JavaScript biasa | Target hanya Google Chrome; tanpa framework agar mudah dipahami |
 | Backend | Node.js + Express | Satu bahasa dengan extension; menangani akun, credit, pembayaran, dan pemanggilan OCR serta Gemini |
 | OCR | RapidOCR (model PaddleOCR versi ONNX) sebagai layanan Python kecil dipanggil backend | Sementara untuk UTS karena mudah dipasang di Windows; diganti PaddleOCR penuh setelah UTS (validasi teknologi, NFR-17) |
-| Terjemahan | Gemini: Standar `gemini-3.5-flash-lite` (1 credit) dan Advanced `gemini-3.8-flash` (2 credit, khusus Premium) | Sesuai rancangan paket; nama model diatur di `backend/.env` |
+| Terjemahan | Gemini: Standar `gemini-3.5-flash-lite` (1 credit) dan Advanced `gemini-3.8-flash` (1 credit, khusus Premium) | Sesuai rancangan paket; nama model diatur di `backend/.env` |
 | Database | MySQL | Keputusan proyek |
 | Pembayaran | QRIS lewat Midtrans | Keputusan proyek |
 | File Explorer | Native Messaging (menu klik kanan hanya untuk Premium) | Disetujui di rancangan |

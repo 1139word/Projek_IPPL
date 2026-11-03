@@ -1,7 +1,7 @@
 // Aturan credit per akun (UC-02, UC-05): biaya tiap model, cek sebelum menerjemahkan,
 // dan potong hanya setelah terjemahan berhasil (gagal atau teks tidak ditemukan = gratis).
 
-const COST = { std: 1, adv: 2 };
+const COST = { std: 1, adv: 1 }; // Advanced sengaja sama dengan Standar (keputusan 3 Nov 2026) agar tidak terasa tidak adil
 
 class CreditError extends Error {
   constructor(code, message, status) { super(message); this.code = code; this.status = status; }

@@ -95,5 +95,5 @@ Tes ini tidak memakai internet, API key, maupun MySQL (OCR, Gemini, Google, dan 
 
 ## Catatan
 - OCR saat ini memakai **RapidOCR** (model PaddleOCR versi ONNX) karena mudah dipasang. Model bawaannya paling baik untuk teks Inggris dan Mandarin; teks Jepang akan ditingkatkan setelah UTS.
-- Sudah ada: login Google (wajib sebelum menerjemahkan), credit per akun di MySQL (Free 10 per minggu, Standar 1 credit, Advanced 2 credit khusus Premium, dipotong hanya bila berhasil). Belum ada: pembelian Premium, pembayaran, dan File Explorer.
+- Sudah ada: login Google (wajib sebelum menerjemahkan), credit per akun di MySQL (Free 10 per minggu, Standar 1 credit, Advanced 1 credit khusus Premium, dipotong hanya bila berhasil). Belum ada: pembelian Premium, pembayaran, dan File Explorer.
 - Situs yang memblokir unduhan gambar (Pixiv, MANGA Plus) diterjemahkan lewat **potret layar**, jadi hanya bagian gambar yang sedang terlihat yang terbaca. Setelah menggulir, arahkan kursor ke gambar lagi: tombol terjemah muncul kembali untuk bagian yang belum diterjemahkan, dan hasilnya digabung dengan hasil sebelumnya.
