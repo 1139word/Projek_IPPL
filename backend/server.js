@@ -1,5 +1,5 @@
-// Backend Image Translator: endpoint penerjemahan, akun (login Google), dan credit per akun.
-// dan pembelian Premium lewat QRIS Midtrans.
+// Backend Image Translator: endpoint penerjemahan, akun (login Google), credit per akun,
+// dan pembelian paket credit lewat QRIS Midtrans.
 //
 // Menjalankan:  npm start   (membaca konfigurasi dari file .env)
 
@@ -9,8 +9,7 @@ const { loginWithGoogle, userFromSession, logout, publicUser } = require('./lib/
 const { userStore } = require('./lib/auth-store');
 const { verifyGoogleToken } = require('./lib/google');
 const { checkCredit, chargeCredit } = require('./lib/credit');
-const { infoPaket } = require('./lib/paket');
-const { buatPesanan, cekPesanan, publicOrder } = require('./lib/premium');
+const { daftarPaket, buatPesanan, cekPesanan, publicOrder } = require('./lib/pembelian');
 const { orderStore } = require('./lib/order-store');
 const midtrans = require('./lib/midtrans');
 
@@ -44,8 +43,7 @@ function kirimGagal(res, e) {
   res.status(e.status || 500).json({ code, message });
 }
 
-// Middleware: hanya meneruskan permintaan yang membawa token sesi sah. Pengguna disimpan di req.user
-// (credit-nya sudah diisi ulang bila sudah lewat seminggu).
+// Middleware: hanya meneruskan permintaan yang membawa token sesi sah. Pengguna disimpan di req.user.
 async function requireLogin(req, res, next) {
   try {
     const user = await userFromSession(bearerToken(req), { store: userStore });
@@ -69,27 +67,34 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 // UC-02 Melihat credit: data akun untuk popup.
-// Bila ada pesanan Premium yang belum selesai, statusnya dicek dulu. Jadi pengguna yang sudah membayar
-// tetapi menutup halaman pembayaran terlalu cepat tetap mendapat Premium saat membuka popup.
+// Bila ada pesanan yang belum selesai, statusnya dicek dulu. Jadi pengguna yang sudah membayar
+// tetapi menutup halaman pembayaran terlalu cepat tetap mendapat credit-nya saat membuka popup.
 app.get('/api/me', requireLogin, async (req, res) => {
   let user = req.user;
   try {
-    const pending = await orderStore.findLatestPending(user.id);
-    if (pending) {
-      const { order, activated } = await cekPesanan(user, pending.order_id, depsPremium);
-      if (activated) {
-        console.log(`PREMIUM AKTIF ${user.email} (pesanan ${order.order_id}, dicek dari popup)`);
-        user = await userFromSession(bearerToken(req), { store: userStore });
+    let bertambah = false;
+    for (const pending of await orderStore.findPendingOrders(user.id)) {
+      const { order, credited } = await cekPesanan(user, pending.order_id, depsPembelian);
+      if (credited) {
+        console.log(`CREDIT +${order.credits} ${user.email} (pesanan ${order.order_id}, dicek dari popup)`);
+        bertambah = true;
       }
     }
+    if (bertambah) user = await userFromSession(bearerToken(req), { store: userStore });
   } catch (e) {
     console.log(`Cek pesanan gagal: ${e.message}`); // popup tetap mendapat data akun
   }
   res.json(publicUser(user));
 });
 
-// UC-07 Melihat Paket Premium: harga, kuota, dan fitur tiap paket. Tidak perlu login.
-app.get('/api/plans', (req, res) => res.json(infoPaket()));
+// UC-07 Melihat Paket Credit: daftar paket yang dijual. Tidak perlu login.
+app.get('/api/packages', async (req, res) => {
+  try {
+    res.json({ packages: await daftarPaket({ store: orderStore }) });
+  } catch (e) {
+    kirimGagal(res, e);
+  }
+});
 
 app.post('/api/auth/logout', async (req, res) => {
   try {
@@ -100,26 +105,27 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 });
 
-// ---- Premium (UC-08) ----
-const depsPremium = { store: orderStore, midtrans };
+// ---- Membeli Paket Credit (UC-08) ----
+const depsPembelian = { store: orderStore, midtrans };
 
-// Membuat pesanan QRIS (atau memakai pesanan yang masih menunggu pembayaran).
+// Membuat pesanan QRIS untuk paket yang dipilih (atau memakai pesanan paket itu yang masih menunggu pembayaran).
+// Isi permintaan: { "packageId": 1 }
 app.post('/api/orders', requireLogin, async (req, res) => {
   try {
-    const order = await buatPesanan(req.user, depsPremium);
-    console.log(`PESANAN ${order.order_id} ${req.user.email} Rp ${order.amount}`);
+    const order = await buatPesanan(req.user, (req.body || {}).packageId, depsPembelian);
+    console.log(`PESANAN ${order.order_id} ${req.user.email} ${order.credits} credit Rp ${order.amount}`);
     res.json(publicOrder(order));
   } catch (e) {
     kirimGagal(res, e);
   }
 });
 
-// Status pesanan. Backend bertanya langsung ke Midtrans; bila lunas, Premium diaktifkan di sini.
+// Status pesanan. Backend bertanya langsung ke Midtrans; bila lunas, credit ditambahkan di sini.
 app.get('/api/orders/:id', requireLogin, async (req, res) => {
   try {
-    const { order, activated } = await cekPesanan(req.user, req.params.id, depsPremium);
-    if (activated) console.log(`PREMIUM AKTIF ${req.user.email} (pesanan ${order.order_id})`);
-    const user = activated ? await userFromSession(bearerToken(req), { store: userStore }) : req.user;
+    const { order, credited } = await cekPesanan(req.user, req.params.id, depsPembelian);
+    if (credited) console.log(`CREDIT +${order.credits} ${req.user.email} (pesanan ${order.order_id})`);
+    const user = credited ? await userFromSession(bearerToken(req), { store: userStore }) : req.user;
     res.json({ order: publicOrder(order), user: publicUser(user) });
   } catch (e) {
     kirimGagal(res, e);
@@ -167,6 +173,6 @@ const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
   console.log(`Backend siap di http://localhost:${PORT}`);
   if (!process.env.GEMINI_API_KEY) console.log('Peringatan: GEMINI_API_KEY belum diisi di .env');
-  if (!process.env.MIDTRANS_SERVER_KEY) console.log('Catatan: MIDTRANS_SERVER_KEY belum diisi di .env (pembelian Premium belum bisa dipakai)');
+  if (!process.env.MIDTRANS_SERVER_KEY) console.log('Catatan: MIDTRANS_SERVER_KEY belum diisi di .env (pembelian paket credit belum bisa dipakai)');
   if (!process.env.GOOGLE_CLIENT_ID) console.log('Peringatan: GOOGLE_CLIENT_ID belum diisi di .env (login Google belum bisa dipakai)');
 });

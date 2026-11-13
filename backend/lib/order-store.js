@@ -1,13 +1,24 @@
-// Perintah SQL untuk pesanan Premium. premium.js tidak menulis SQL sendiri,
+// Perintah SQL untuk paket credit dan pesanan. pembelian.js tidak menulis SQL sendiri,
 // jadi di tes file ini bisa diganti penyimpanan palsu di memori.
 
 const { pool } = require('./db');
 
 const orderStore = {
-  async insertOrder({ orderId, userId, amount, days, expiresAt, qrUrl }) {
+  // Paket yang sedang dijual, dari yang paling kecil.
+  async listPackages() {
+    const [rows] = await pool.query('SELECT id, name, credits, price FROM credit_packages WHERE active = TRUE ORDER BY credits');
+    return rows;
+  },
+
+  async findPackage(packageId) {
+    const [rows] = await pool.query('SELECT id, name, credits, price FROM credit_packages WHERE id = ? AND active = TRUE', [packageId]);
+    return rows[0] || null;
+  },
+
+  async insertOrder({ orderId, userId, packageId, amount, credits, expiresAt, qrUrl }) {
     await pool.query(
-      "INSERT INTO orders (order_id, user_id, amount, days, status, qr_url, expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)",
-      [orderId, userId, amount, days, qrUrl, expiresAt]
+      "INSERT INTO orders (order_id, user_id, package_id, amount, credits, status, qr_url, expires_at) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)",
+      [orderId, userId, packageId, amount, credits, qrUrl, expiresAt]
     );
     return this.findOrder(orderId);
   },
@@ -17,22 +28,23 @@ const orderStore = {
     return rows[0] || null;
   },
 
-  // Pesanan terakhir yang masih menunggu pembayaran dan belum lewat batas waktu.
-  async findPendingOrder(userId, now) {
+  // Pesanan paket yang sama yang masih menunggu pembayaran dan belum lewat batas waktu.
+  async findPendingOrder(userId, packageId, now) {
     const [rows] = await pool.query(
-      "SELECT * FROM orders WHERE user_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC LIMIT 1",
-      [userId, now]
+      "SELECT * FROM orders WHERE user_id = ? AND package_id = ? AND status = 'pending' AND expires_at > ? ORDER BY created_at DESC LIMIT 1",
+      [userId, packageId, now]
     );
     return rows[0] || null;
   },
 
-  // Pesanan pending terakhir, termasuk yang sudah lewat batas waktu (untuk dicek ulang ke Midtrans).
-  async findLatestPending(userId) {
+  // Semua pesanan pending milik pengguna, termasuk yang sudah lewat batas waktu (untuk dicek ulang ke Midtrans).
+  // Dibatasi 5 terbaru supaya membuka popup tidak memicu banyak panggilan ke Midtrans.
+  async findPendingOrders(userId) {
     const [rows] = await pool.query(
-      "SELECT * FROM orders WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1",
+      "SELECT * FROM orders WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 5",
       [userId]
     );
-    return rows[0] || null;
+    return rows;
   },
 
   // Hanya pesanan yang masih pending yang boleh berubah status.
@@ -40,9 +52,10 @@ const orderStore = {
     await pool.query("UPDATE orders SET status = ? WHERE order_id = ? AND status = 'pending'", [status, orderId]);
   },
 
-  // Tandai lunas DAN aktifkan Premium dalam satu transaksi database: keduanya berhasil, atau tidak sama sekali.
-  // Syarat status = 'pending' mencegah Premium diaktifkan dua kali bila dua pengecekan datang bersamaan.
-  async payOrderAndActivate(orderId, userId, { premiumUntil, creditLeft, creditResetAt, paidAt }) {
+  // Tandai lunas DAN tambah credit dalam satu transaksi database: keduanya berhasil, atau tidak sama sekali.
+  // Syarat status = 'pending' mencegah credit ditambahkan dua kali bila dua pengecekan datang bersamaan.
+  // "credit_left = credit_left + ?" dihitung oleh database, jadi credit lama tidak hilang (menumpuk).
+  async payOrderAndAddCredit(orderId, userId, { credits, paidAt }) {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -54,10 +67,7 @@ const orderStore = {
         await conn.rollback();
         return false;
       }
-      await conn.query(
-        "UPDATE users SET plan = 'premium', premium_until = ?, credit_left = ?, credit_reset_at = ? WHERE id = ?",
-        [premiumUntil, creditLeft, creditResetAt, userId]
-      );
+      await conn.query('UPDATE users SET credit_left = credit_left + ? WHERE id = ?', [credits, userId]);
       await conn.commit();
       return true;
     } catch (e) {

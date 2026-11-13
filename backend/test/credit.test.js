@@ -4,8 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { checkCredit, chargeCredit } = require('../lib/credit');
 
-const free = (left) => ({ id: 1, plan: 'free', credit_left: left });
-const premium = (left) => ({ id: 2, plan: 'premium', credit_left: left });
+const akun = (left, id = 1) => ({ id, credit_left: left });
 
 // Meniru UPDATE ... SET credit_left = credit_left - ? WHERE id = ? AND credit_left >= ?
 function storePalsu(users) {
@@ -19,34 +18,31 @@ function storePalsu(users) {
   };
 }
 
-test('Standar dan Advanced sama-sama butuh 1 credit', () => {
-  assert.strictEqual(checkCredit(free(10), 'std'), 1);
-  assert.strictEqual(checkCredit(premium(10), 'adv'), 1);
+test('Standar dan Advanced sama-sama butuh 1 credit dan boleh dipakai semua akun', () => {
+  assert.strictEqual(checkCredit(akun(10), 'std'), 1);
+  assert.strictEqual(checkCredit(akun(10), 'adv'), 1);
+  // Akun dengan credit awal saja (belum pernah membeli) juga boleh memakai Advanced.
+  assert.strictEqual(checkCredit(akun(1), 'adv'), 1);
 });
 
-test('akun Free tidak boleh memakai Advanced walau credit cukup', () => {
-  assert.throws(() => checkCredit(free(10), 'adv'), { code: 'PREMIUM_ONLY', status: 403 });
-});
-
-test('File Explorer khusus Premium (UC Premium: terjemahkan dari File Explorer)', () => {
-  assert.throws(() => checkCredit(free(10), 'std', { source: 'explorer' }), { code: 'PREMIUM_ONLY', status: 403 });
-  assert.strictEqual(checkCredit(premium(10), 'std', { source: 'explorer' }), 1);
-  assert.strictEqual(checkCredit(free(10), 'std', { source: 'page' }), 1);
-  assert.throws(() => checkCredit(premium(10), 'std', { source: 'lain' }), { code: 'BAD_REQUEST', status: 400 });
+test('asal permintaan: halaman dan File Explorer boleh untuk semua akun, lainnya ditolak', () => {
+  assert.strictEqual(checkCredit(akun(10), 'std', { source: 'page' }), 1);
+  assert.strictEqual(checkCredit(akun(10), 'std', { source: 'explorer' }), 1);
+  assert.throws(() => checkCredit(akun(10), 'std', { source: 'lain' }), { code: 'BAD_REQUEST', status: 400 });
 });
 
 test('credit kurang dari biaya ditolak sebelum menerjemahkan', () => {
-  assert.throws(() => checkCredit(free(0), 'std'), { code: 'NO_CREDIT', status: 402 });
-  assert.throws(() => checkCredit(premium(0), 'adv'), { code: 'NO_CREDIT' });
+  assert.throws(() => checkCredit(akun(0), 'std'), { code: 'NO_CREDIT', status: 402 });
+  assert.throws(() => checkCredit(akun(0), 'adv'), { code: 'NO_CREDIT' });
 });
 
 test('model yang tidak dikenal ditolak', () => {
-  assert.throws(() => checkCredit(free(10), 'gratis'), { code: 'BAD_REQUEST', status: 400 });
-  assert.throws(() => checkCredit(free(10), 'toString'), { code: 'BAD_REQUEST' }); // bukan model, walau ada di objek bawaan JS
+  assert.throws(() => checkCredit(akun(10), 'gratis'), { code: 'BAD_REQUEST', status: 400 });
+  assert.throws(() => checkCredit(akun(10), 'toString'), { code: 'BAD_REQUEST' }); // bukan model, walau ada di objek bawaan JS
 });
 
 test('credit dipotong sesuai biaya model', async () => {
-  const users = [free(10), premium(100)];
+  const users = [akun(10, 1), akun(100, 2)];
   const store = storePalsu(users);
   // Salinan, seperti req.user yang dibaca dari database sebelum dipotong.
   assert.strictEqual((await chargeCredit({ ...users[0] }, 'std', { store })).credit_left, 9);
@@ -55,7 +51,7 @@ test('credit dipotong sesuai biaya model', async () => {
 });
 
 test('dua terjemahan bersamaan dengan sisa 1 credit tidak membuat credit minus', async () => {
-  const users = [free(1)];
+  const users = [akun(1)];
   const store = storePalsu(users);
   const dibaca = { ...users[0] }; // keduanya sudah lolos checkCredit dengan sisa 1
   await Promise.all([chargeCredit(dibaca, 'std', { store }), chargeCredit(dibaca, 'std', { store })]);

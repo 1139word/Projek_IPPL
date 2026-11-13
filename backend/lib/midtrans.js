@@ -1,6 +1,6 @@
 // Komunikasi dengan Midtrans (payment gateway) lewat Core API, khusus pembayaran QRIS.
 // Hanya backend yang memegang Server Key. Extension tidak pernah menghubungi Midtrans langsung,
-// dan status Premium hanya diaktifkan dari jawaban Midtrans yang diminta backend sendiri (NFR-20).
+// dan credit hanya ditambahkan dari jawaban Midtrans yang diminta backend sendiri (NFR-20).
 //
 // Mode Sandbox (uji coba, tanpa uang sungguhan) dipakai selama MIDTRANS_PRODUCTION bukan "1".
 

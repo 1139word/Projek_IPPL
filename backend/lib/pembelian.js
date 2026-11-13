@@ -1,30 +1,36 @@
-// Berlangganan Premium (UC-08): membuat pesanan QRIS dan memeriksa pembayarannya.
+// Paket credit (UC-07) dan pembeliannya lewat QRIS (UC-08).
 // Tidak menulis SQL dan tidak memanggil Midtrans sendiri: keduanya diterima dari luar (deps),
 // sehingga bisa diuji dengan pengganti palsu seperti auth.js.
 //
 // Alur:
-// 1. Extension meminta pesanan baru -> backend membuat baris orders (pending) dan transaksi QRIS di Midtrans.
+// 1. Extension meminta pesanan untuk satu paket -> backend membuat baris orders (pending) dan transaksi QRIS di Midtrans.
 // 2. Halaman pembayaran menanyakan status setiap beberapa detik -> backend bertanya ke Midtrans.
-// 3. Midtrans menjawab "settlement" (lunas) -> pesanan jadi paid dan Premium diaktifkan, dalam satu transaksi database.
+// 3. Midtrans menjawab "settlement" (lunas) -> pesanan jadi paid dan credit ditambahkan, dalam satu transaksi database.
 // Status yang dikirim extension tidak pernah dipercaya; hanya jawaban Midtrans (NFR-20).
 
-const { quotaFor, WEEK_MS } = require('./auth');
-const { premiumDays, premiumPrice } = require('./paket');
+const BAYAR_MENIT = 15; // QR berlaku 15 menit
 
-const BAYAR_MENIT = 15; // QR berlaku 15 menit (sesuai timer di rancangan)
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-class PremiumError extends Error {
+class PembelianError extends Error {
   constructor(code, message, status) { super(message); this.code = code; this.status = status; }
+}
+
+// Paket yang boleh dilihat extension.
+function publicPackage(p) {
+  return { id: p.id, name: p.name, credits: p.credits, price: p.price };
+}
+
+async function daftarPaket({ store }) {
+  return (await store.listPackages()).map(publicPackage);
 }
 
 // Data pesanan yang boleh dikirim ke extension.
 function publicOrder(o) {
   return {
     orderId: o.order_id,
+    packageId: o.package_id,
     status: o.status,
     amount: o.amount,
-    days: o.days,
+    credits: o.credits,
     expiresAt: new Date(o.expires_at).toISOString(),
     paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null,
     // Mode Sandbox: alamat QR ikut dikirim agar bisa ditempel di simulator pembayaran Midtrans.
@@ -32,52 +38,49 @@ function publicOrder(o) {
   };
 }
 
-// Membuat pesanan, atau memakai ulang pesanan yang masih menunggu pembayaran
-// (supaya membuka halaman pembayaran dua kali tidak membuat dua QR).
-async function buatPesanan(user, { store, midtrans, now = () => new Date() }) {
-  if (user.plan === 'premium') {
-    throw new PremiumError('ALREADY_PREMIUM', 'Premium Anda masih aktif. Paket bisa dibeli lagi setelah masa aktif berakhir.', 409);
-  }
+// Membuat pesanan untuk satu paket, atau memakai ulang pesanan paket yang sama yang masih menunggu
+// pembayaran (supaya membuka halaman pembayaran dua kali tidak membuat dua QR).
+// Harga dan jumlah credit disalin ke pesanan: bila harga paket diubah kemudian, pesanan lama tidak ikut berubah.
+async function buatPesanan(user, packageId, { store, midtrans, now = () => new Date() }) {
+  const id = Number(packageId);
+  if (!Number.isInteger(id) || id <= 0) throw new PembelianError('BAD_REQUEST', 'Paket credit tidak dipilih', 400);
+  const paket = await store.findPackage(id);
+  if (!paket) throw new PembelianError('PACKAGE_NOT_FOUND', 'Paket credit tidak ditemukan atau tidak dijual lagi', 404);
+
   const t = now();
-  const lama = await store.findPendingOrder(user.id, t);
+  const lama = await store.findPendingOrder(user.id, paket.id, t);
   if (lama) return lama;
 
   const order = {
     orderId: `IT-${user.id}-${t.getTime().toString(36)}`, // unik dan pendek (Midtrans maksimal 50 karakter)
     userId: user.id,
-    amount: premiumPrice(),
-    days: premiumDays(),
+    packageId: paket.id,
+    amount: paket.price,
+    credits: paket.credits,
     expiresAt: new Date(t.getTime() + BAYAR_MENIT * 60 * 1000)
   };
   const qr = await midtrans.chargeQris({ orderId: order.orderId, amount: order.amount, minutes: BAYAR_MENIT });
   return store.insertOrder({ ...order, qrUrl: qr.qrUrl });
 }
 
-// Memeriksa satu pesanan milik pengguna ini. Bila Midtrans menyatakan lunas, Premium diaktifkan.
+// Memeriksa satu pesanan milik pengguna ini. Bila Midtrans menyatakan lunas, credit ditambahkan.
 async function cekPesanan(user, orderId, { store, midtrans, now = () => new Date() }) {
   const order = await store.findOrder(orderId);
   // Pesanan orang lain diperlakukan sama dengan pesanan yang tidak ada.
-  if (!order || order.user_id !== user.id) throw new PremiumError('ORDER_NOT_FOUND', 'Pesanan tidak ditemukan', 404);
+  if (!order || order.user_id !== user.id) throw new PembelianError('ORDER_NOT_FOUND', 'Pesanan tidak ditemukan', 404);
   if (order.status !== 'pending') return { order };
 
   const t = now();
   const hasil = await midtrans.cekStatus(order.order_id);
 
   if (hasil.status === 'paid') {
-    // A3: jumlah yang dibayar harus sama dengan harga pesanan.
+    // Jumlah yang dibayar harus sama dengan harga pesanan.
     if (hasil.amount !== order.amount) {
       await store.setOrderStatus(order.order_id, 'failed');
-      throw new PremiumError('PAYMENT_MISMATCH', 'Jumlah pembayaran tidak cocok dengan pesanan. Premium tidak diaktifkan.', 409);
+      throw new PembelianError('PAYMENT_MISMATCH', 'Jumlah pembayaran tidak cocok dengan pesanan. Credit tidak ditambahkan.', 409);
     }
-    // Premium berlaku sejak sekarang (atau diperpanjang dari tanggal lama bila masih aktif).
-    const dasar = user.plan === 'premium' && user.premium_until && new Date(user.premium_until) > t ? new Date(user.premium_until) : t;
-    const aktif = {
-      premiumUntil: new Date(dasar.getTime() + order.days * DAY_MS),
-      creditLeft: quotaFor('premium'),
-      creditResetAt: new Date(t.getTime() + WEEK_MS)
-    };
-    const berhasil = await store.payOrderAndActivate(order.order_id, user.id, { ...aktif, paidAt: t });
-    return { order: await store.findOrder(order.order_id), activated: berhasil };
+    const berhasil = await store.payOrderAndAddCredit(order.order_id, user.id, { credits: order.credits, paidAt: t });
+    return { order: await store.findOrder(order.order_id), credited: berhasil };
   }
   if (hasil.status === 'expired' || hasil.status === 'failed') {
     await store.setOrderStatus(order.order_id, hasil.status);
@@ -91,4 +94,4 @@ async function cekPesanan(user, orderId, { store, midtrans, now = () => new Date
   return { order };
 }
 
-module.exports = { buatPesanan, cekPesanan, publicOrder, PremiumError, BAYAR_MENIT };
+module.exports = { daftarPaket, buatPesanan, cekPesanan, publicOrder, publicPackage, PembelianError, BAYAR_MENIT };

@@ -9,10 +9,11 @@ const userStore = {
     return rows[0] || null;
   },
 
-  async insertUser({ googleSub, email, pictureUrl, creditLeft, creditResetAt }) {
+  // creditLeft = credit awal akun baru (diberikan sekali, saat akun dibuat).
+  async insertUser({ googleSub, email, pictureUrl, creditLeft }) {
     const [res] = await pool.query(
-      'INSERT INTO users (google_sub, email, picture_url, credit_left, credit_reset_at) VALUES (?, ?, ?, ?, ?)',
-      [googleSub, email, pictureUrl, creditLeft, creditResetAt]
+      'INSERT INTO users (google_sub, email, picture_url, credit_left) VALUES (?, ?, ?, ?)',
+      [googleSub, email, pictureUrl, creditLeft]
     );
     const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [res.insertId]);
     return rows[0];
@@ -20,15 +21,6 @@ const userStore = {
 
   async updateProfile(userId, { email, pictureUrl }) {
     await pool.query('UPDATE users SET email = ?, picture_url = ? WHERE id = ?', [email, pictureUrl, userId]);
-  },
-
-  // Isi ulang credit. Syarat "credit_reset_at = lama" mencegah reset ganda bila dua permintaan datang bersamaan.
-  async resetCredit(userId, { creditLeft, creditResetAt, oldResetAt }) {
-    const [res] = await pool.query(
-      'UPDATE users SET credit_left = ?, credit_reset_at = ? WHERE id = ? AND credit_reset_at = ?',
-      [creditLeft, creditResetAt, userId, oldResetAt]
-    );
-    return res.affectedRows === 1;
   },
 
   // Kurangi credit hanya bila masih cukup. Dicek dan dikurangi dalam SATU perintah UPDATE,
@@ -39,14 +31,6 @@ const userStore = {
       [cost, userId, cost]
     );
     return res.affectedRows === 1;
-  },
-
-  // Premium berakhir: kembali Free. Syarat plan = 'premium' membuat perintah ini aman bila terpanggil dua kali.
-  async endPremium(userId, { creditLeft }) {
-    await pool.query(
-      "UPDATE users SET plan = 'free', premium_until = NULL, credit_left = LEAST(credit_left, ?) WHERE id = ? AND plan = 'premium'",
-      [creditLeft, userId]
-    );
   },
 
   async insertSession({ tokenHash, userId, expiresAt }) {

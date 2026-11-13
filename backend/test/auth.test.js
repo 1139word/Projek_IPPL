@@ -2,7 +2,7 @@
 // Jalankan: npm test
 const test = require('node:test');
 const assert = require('node:assert');
-const { loginWithGoogle, userFromSession, logout, hashToken, WEEK_MS, SESSION_MS } = require('../lib/auth');
+const { loginWithGoogle, userFromSession, logout, hashToken, publicUser, SESSION_MS } = require('../lib/auth');
 
 // Penyimpanan palsu dengan method yang sama seperti lib/auth-store.js.
 function storePalsu() {
@@ -12,18 +12,11 @@ function storePalsu() {
     users, sessions,
     async findUserByGoogleSub(sub) { return users.find((u) => u.google_sub === sub) || null; },
     async insertUser(d) {
-      const u = { id: users.length + 1, google_sub: d.googleSub, email: d.email, picture_url: d.pictureUrl,
-        plan: 'free', credit_left: d.creditLeft, credit_reset_at: d.creditResetAt };
+      const u = { id: users.length + 1, google_sub: d.googleSub, email: d.email, picture_url: d.pictureUrl, credit_left: d.creditLeft };
       users.push(u);
       return { ...u };
     },
     async updateProfile(id, d) { Object.assign(users.find((u) => u.id === id), { email: d.email, picture_url: d.pictureUrl }); },
-    async resetCredit(id, d) {
-      const u = users.find((x) => x.id === id);
-      if (u.credit_reset_at.getTime() !== new Date(d.oldResetAt).getTime()) return false;
-      Object.assign(u, { credit_left: d.creditLeft, credit_reset_at: d.creditResetAt });
-      return true;
-    },
     async insertSession(s) { sessions.set(s.tokenHash, s); },
     async findSession(h) {
       const s = sessions.get(h);
@@ -44,11 +37,13 @@ function jam(mulai) {
   return { now: () => new Date(t), maju: (ms) => { t += ms; } };
 }
 
-test('login pertama membuat akun Free dengan 10 credit dan token sesi', async () => {
+test('login pertama membuat akun dengan 10 credit awal dan token sesi', async () => {
   const store = storePalsu();
   const { token, user } = await loginWithGoogle('token-google-sah', { store, verifyGoogleToken: googlePalsu });
   assert.strictEqual(store.users.length, 1);
-  assert.strictEqual(user.plan, 'free');
+  // Tidak ada status paket, kuota, maupun jadwal reset yang dikirim ke extension.
+  assert.deepStrictEqual(Object.keys(user).sort(), ['credit', 'email', 'picture']);
+  assert.deepStrictEqual(user.credit, { left: 10 });
   assert.strictEqual(user.credit.left, 10);
   assert.strictEqual(user.picture, 'https://foto/1.png');
   assert.ok(token.length >= 40);
@@ -97,63 +92,34 @@ test('logout menghapus sesi', async () => {
   assert.strictEqual(await userFromSession(token, { store }), null);
 });
 
-test('credit kembali ke kuota setelah seminggu, tidak terakumulasi', async () => {
+test('credit awal hanya diberikan saat registrasi, login berikutnya tidak menambah', async () => {
+  const store = storePalsu();
+  const deps = { store, verifyGoogleToken: googlePalsu };
+  await loginWithGoogle('token-google-sah', deps);
+  store.users[0].credit_left = 3; // anggap sudah terpakai 7
+  const { user } = await loginWithGoogle('token-google-sah', deps);
+  assert.strictEqual(user.credit.left, 3);
+});
+
+test('credit tidak direset dan tidak kedaluwarsa walau waktu berjalan lama', async () => {
   const store = storePalsu();
   const j = jam('2026-10-27T00:00:00Z');
   const { token } = await loginWithGoogle('token-google-sah', { store, verifyGoogleToken: googlePalsu, now: j.now });
-  store.users[0].credit_left = 3; // anggap sudah terpakai 7
-
-  j.maju(WEEK_MS - 1000); // belum seminggu
+  store.users[0].credit_left = 3;
+  j.maju(29 * 24 * 60 * 60 * 1000); // 29 hari kemudian (sesi masih berlaku)
   assert.strictEqual((await userFromSession(token, { store, now: j.now })).credit_left, 3);
-
-  j.maju(2000); // lewat seminggu
-  const u = await userFromSession(token, { store, now: j.now });
-  assert.strictEqual(u.credit_left, 10); // kembali ke 10, bukan 3 + 10
-  assert.strictEqual(new Date(u.credit_reset_at).getTime(), j.now().getTime() + WEEK_MS);
+  // Saldo besar hasil membeli paket juga tidak dipotong.
+  store.users[0].credit_left = 280;
+  assert.strictEqual(publicUser(await userFromSession(token, { store, now: j.now })).credit.left, 280);
 });
 
-// ---- Premium berakhir ----
-const { refreshPlan, publicUser } = require('../lib/auth');
-
-function storePremium() {
-  const panggilan = [];
-  return { panggilan, async endPremium(id, d) { panggilan.push({ id, ...d }); } };
-}
-
-test('Premium yang masih aktif tidak berubah dan tanggalnya dikirim ke extension', async () => {
-  const store = storePremium();
-  const user = { id: 1, plan: 'premium', premium_until: new Date('2026-12-01T00:00:00Z'), credit_left: 80, credit_reset_at: new Date('2026-11-08T00:00:00Z') };
-  const hasil = await refreshPlan(user, { store, now: () => new Date('2026-11-20T00:00:00Z') });
-  assert.strictEqual(hasil.plan, 'premium');
-  assert.strictEqual(store.panggilan.length, 0);
-  assert.strictEqual(publicUser(hasil).premiumUntil, '2026-12-01T00:00:00.000Z');
-  assert.strictEqual(publicUser(hasil).credit.quota, 100);
-});
-
-test('Premium yang sudah lewat kembali Free dan sisa credit dipotong ke kuota Free', async () => {
-  const store = storePremium();
-  const user = { id: 7, plan: 'premium', premium_until: new Date('2026-12-01T00:00:00Z'), credit_left: 80, credit_reset_at: new Date('2026-12-05T00:00:00Z') };
-  const hasil = await refreshPlan(user, { store, now: () => new Date('2026-12-01T00:00:01Z') });
-  assert.strictEqual(hasil.plan, 'free');
-  assert.strictEqual(hasil.credit_left, 10);
-  assert.deepStrictEqual(store.panggilan, [{ id: 7, creditLeft: 10 }]);
-  assert.strictEqual(publicUser(hasil).premiumUntil, null);
-});
-
-test('akun Free tidak disentuh oleh pengecekan Premium', async () => {
-  const store = storePremium();
-  const user = { id: 2, plan: 'free', premium_until: null, credit_left: 3 };
-  assert.strictEqual(await refreshPlan(user, { store, now: () => new Date() }), user);
-  assert.strictEqual(store.panggilan.length, 0);
-});
-
-test('info paket membaca harga dan lama Premium dari .env', () => {
-  const { infoPaket } = require('../lib/paket');
-  process.env.PREMIUM_PRICE = '25000';
-  process.env.PREMIUM_DAYS = '30';
-  const p = infoPaket();
-  assert.strictEqual(p.premium.price, 25000);
-  assert.strictEqual(p.premium.days, 30);
-  assert.strictEqual(p.free.quota, 10);
-  assert.strictEqual(p.premium.quota, 100);
+test('jumlah credit awal bisa diatur lewat CREDIT_AWAL di .env', async () => {
+  process.env.CREDIT_AWAL = '5';
+  try {
+    const store = storePalsu();
+    const { user } = await loginWithGoogle('token-google-sah', { store, verifyGoogleToken: googlePalsu });
+    assert.strictEqual(user.credit.left, 5);
+  } finally {
+    delete process.env.CREDIT_AWAL;
+  }
 });
