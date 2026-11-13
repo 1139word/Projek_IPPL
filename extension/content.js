@@ -65,12 +65,53 @@
     }
     return null;
   }
+  // ---- Gambar yang tertutup lapisan lain ----
+  // Beberapa situs (misalnya Pixiv) membuka gambar besar di lapisan baru yang menumpuk di atas halaman.
+  // Gambar di halaman bawah masih ada di dokumen, tetapi pengguna tidak melihatnya. Gambar seperti itu
+  // tidak boleh diberi tombol dan tidak boleh ditempeli hasil terjemahan.
+  // Penutup = elemen berlatar pekat (alpha >= 0,5). Lapisan transparan (penangkap klik) bukan penutup.
+  function latarPekat(el) {
+    const m = /^rgba?\(([^)]+)\)/.exec(getComputedStyle(el).backgroundColor || '');
+    if (!m) return false;
+    const a = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number);
+    return (a.length > 3 ? a[3] : 1) >= 0.5 && visibleEl(el);
+  }
+  const mediaBesar = (el) => ['IMG', 'CANVAS', 'VIDEO'].includes(el.tagName) && big(el.getBoundingClientRect()) && visibleEl(el);
+  // Apakah di titik (x, y) ada elemen lain yang menutupi `target`?
+  // elementsFromPoint mengurutkan dari yang paling atas, jadi semua elemen sebelum `target` berada di atasnya.
+  function tertutupDi(target, x, y) {
+    const els = document.elementsFromPoint(x, y);
+    const i = els.indexOf(target);
+    if (i < 0) return false; // tidak bisa dipastikan (misalnya pointer-events: none): anggap terlihat
+    for (let k = 0; k < i; k++) {
+      const el = els[k];
+      if (isOurs(el) || target.contains(el)) continue;
+      if (mediaBesar(el) || latarPekat(el)) return true;
+    }
+    return false;
+  }
+  // Gambar dianggap tertutup bila sebagian besar titik contoh di bagian yang terlihat ternyata tertutup.
+  function tertutup(el) {
+    const v = visibleRect(el);
+    if (!v.ok) return false; // di luar layar: bukan urusan fungsi ini
+    const w = v.r - v.l, h = v.b - v.t;
+    const titik = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+    let n = 0;
+    for (const [fx, fy] of titik) if (tertutupDi(el, v.l + w * fx, v.t + h * fy)) n++;
+    return n >= 3;
+  }
+
   // Cari gambar di bawah kursor. elementsFromPoint dipakai agar tetap ketemu walau ada lapisan transparan di atasnya.
+  // Yang dipilih hanya gambar paling atas di titik itu: begitu ada lapisan berlatar pekat di atas sebuah
+  // gambar, pencarian berhenti, supaya gambar di balik lapisan tersebut tidak ikut diterjemahkan.
   function findTarget(x, y) {
     const els = document.elementsFromPoint(x, y);
     for (const el of els) {
       if (isOurs(el)) { if (el === fab) return 'fab'; continue; }
-      if (el.tagName !== 'IMG' && el.tagName !== 'CANVAS') continue;
+      if (el.tagName !== 'IMG' && el.tagName !== 'CANVAS') {
+        if (latarPekat(el) && els.slice(els.indexOf(el) + 1).some((d) => !el.contains(d) && !d.contains(el) && mediaBesar(d))) return null;
+        continue;
+      }
       if (!big(el.getBoundingClientRect())) continue;
       if (el.tagName === 'IMG' && !(el.complete && el.naturalWidth >= MIN_SIZE)) continue;
       // Gambar transparan: pakai pembungkus yang menampilkan gambarnya, bila ada.
@@ -122,7 +163,7 @@
   // Perkecil huruf sampai teks muat di dalam kotaknya.
   // scrollWidth dipakai agar satu kata tidak dipotong di tengah ("Benarka/h"): kata yang lebih lebar
   // dari kotak membuat ukuran huruf diperkecil, bukan katanya dipenggal.
-  // Mengembalikan ukuran huruf terbesar yang muat (px).
+  // Mengembalikan ukuran huruf terbesar yang muat (px). box._muat = false bila pada ukuran terkecil pun tidak muat.
   function ukuranMuat(box, span) {
     span.classList.remove('wrapany');
     const maxW = box.clientWidth - 8, maxH = box.clientHeight - 4;
@@ -134,28 +175,73 @@
       if (muat()) lo = mid; else hi = mid - 1;
     }
     box.style.fontSize = lo + 'px';
-    if (!muat()) span.classList.add('wrapany'); // kotak terlalu sempit: terpaksa memotong kata
+    box._muat = muat();
     return lo;
   }
   // Kotak teks di luar balon (punya minBox) dimulai dari ukuran teks asli, lalu dibesarkan bertahap
   // ke arah kotak maksimum hanya sampai huruf terjemahan cukup besar untuk dibaca (HURUF_MIN).
   // Dengan begitu "Huh?" di kolom sempit tidak lagi mendapat kotak putih besar yang menutupi gambar.
   const HURUF_MIN = 12, LANGKAH_TUMBUH = 6;
+  // Terjemahan sering lebih panjang dari teks asli (misalnya Inggris -> Indonesia), sehingga pada kotak
+  // sempit huruf harus sangat kecil atau teksnya terpotong. Bila huruf terpaksa di bawah HURUF_BACA,
+  // kotak dibesarkan sedikit demi sedikit dari titik tengahnya (paling banyak SKALA_MAKS kali), selama
+  // tidak keluar gambar dan tidak menabrak kotak terjemahan lain.
+  const HURUF_BACA = 9, SKALA_MAKS = 1.9, SKALA_LANGKAH = 0.15;
   function setKotak(box, r) {
     box.style.left = r[0] * 100 + '%';
     box.style.top = r[1] * 100 + '%';
     box.style.width = r[2] * 100 + '%';
     box.style.height = r[3] * 100 + '%';
   }
+  const bertumpuk = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
+  // Kotak r dibesarkan s kali dari titik tengahnya, lalu digeser agar tetap di dalam gambar (0..1).
+  function besarkan(r, s) {
+    const w = Math.min(1, r[2] * s), h = Math.min(1, r[3] * s);
+    const x = Math.min(Math.max(0, r[0] + r[2] / 2 - w / 2), 1 - w);
+    const y = Math.min(Math.max(0, r[1] + r[3] / 2 - h / 2), 1 - h);
+    return [x, y, w, h];
+  }
   function fitText(layer) {
-    for (const box of layer.children) {
+    const semua = [...layer.children];
+    for (const box of semua) {
       const span = box.firstChild;
-      if (!box._min) { ukuranMuat(box, span); continue; }
-      const a = box._min, b = box._max;
-      for (let k = 0; k <= LANGKAH_TUMBUH; k++) {
-        const t = k / LANGKAH_TUMBUH;
-        setKotak(box, a.map((v, i) => v + (b[i] - v) * t));
-        if (ukuranMuat(box, span) >= HURUF_MIN) break;
+      box.style.zIndex = '';
+      let dasar = box._box; // kotak dari server (pecahan 0..1 terhadap gambar)
+      let ukuran;
+      if (box._min) {
+        const a = box._min, b = box._max;
+        for (let k = 0; k <= LANGKAH_TUMBUH; k++) {
+          const t = k / LANGKAH_TUMBUH;
+          dasar = a.map((v, i) => v + (b[i] - v) * t);
+          setKotak(box, dasar);
+          ukuran = ukuranMuat(box, span);
+          if (ukuran >= HURUF_MIN) break;
+        }
+      } else {
+        setKotak(box, dasar);
+        ukuran = ukuranMuat(box, span);
+      }
+      let kini = dasar;
+      if (!box._muat || ukuran < HURUF_BACA) {
+        // Tetangga yang sejak awal sudah bertumpuk dengan kotak ini tidak dihitung sebagai tabrakan.
+        const tetangga = semua.filter((o) => o !== box && !bertumpuk(dasar, o._box)).map((o) => o._box);
+        for (let sk = 1 + SKALA_LANGKAH; sk <= SKALA_MAKS + 1e-9; sk += SKALA_LANGKAH) {
+          const r = besarkan(dasar, sk);
+          if (tetangga.some((q) => bertumpuk(r, q))) break;
+          kini = r;
+          setKotak(box, r);
+          ukuran = ukuranMuat(box, span);
+          if (box._muat && ukuran >= HURUF_BACA) break;
+        }
+      }
+      if (!box._muat) {
+        // Jalan terakhir: teks tidak boleh terpotong. Tinggi kotak mengikuti isi teksnya (kata yang
+        // lebih lebar dari kotak terpaksa dipenggal), dan kotak ini ditaruh di atas kotak lain.
+        span.classList.add('wrapany');
+        const h = Math.max(kini[3], Math.min(1, (span.offsetHeight + 8) / layer.clientHeight));
+        const y = Math.min(Math.max(0, kini[1] + kini[3] / 2 - h / 2), 1 - h);
+        setKotak(box, [kini[0], y, kini[2], h]);
+        box.style.zIndex = '1';
       }
     }
   }
@@ -218,18 +304,23 @@
       if (!s.img.isConnected) { removeSession(s); continue; } // situs membuang gambar ini; hasilnya tetap ada di cache
       const v = visibleRect(s.img);
       const f = v.full;
+      // Gambar tertutup lapisan lain (misalnya penampil gambar Pixiv dibuka di atasnya): hasil disembunyikan,
+      // dan muncul lagi sendiri saat lapisan itu ditutup. Dicek tiap 250 ms, bukan tiap frame, agar ringan.
+      const kini = performance.now();
+      if (!s.cek || kini - s.cek > 250) { s.cek = kini; s.tutup = tertutup(s.img); }
+      const tampak = v.ok && !s.tutup;
       if (s.layer) {
         put(s.layer, f.left, f.top, f.width, f.height);
         clipTo(s.layer, v);
-        s.layer.classList.toggle('hid', !v.ok);
+        s.layer.classList.toggle('hid', !tampak);
       }
       // Lingkaran proses menggantikan tombol di posisi yang sama (kiri atas bagian gambar yang terlihat).
       if (s.load) {
         put(s.load, v.l + 12, v.t + 12);
-        s.load.classList.toggle('hid', !v.ok);
+        s.load.classList.toggle('hid', !tampak);
       }
       if (s.bar) {
-        s.bar.style.display = v.ok ? '' : 'none';
+        s.bar.style.display = tampak ? '' : 'none';
         put(s.bar, v.l + 12, v.b - s.bar.offsetHeight - 12);
         // Bar "Tampilkan asli / Tutup hasil" hanya muncul saat kursor berada di atas gambar ini,
         // supaya tidak menutupi hasil terjemahan di bagian bawah gambar. Bar sendiri ada di dalam
@@ -327,8 +418,8 @@
   }
   function stopLoader(el) { if (el) { clearInterval(el._timer); el.remove(); } }
   // Pesan error untuk pengguna. Credit hanya dipotong bila berhasil, jadi katakan dengan jelas,
-  // kecuali bila permintaan memang ditolak sebelum diproses (belum login, credit habis, khusus Premium).
-  const DITOLAK_AWAL = ['NO_CREDIT', 'NOT_LOGGED_IN', 'PREMIUM_ONLY'];
+  // kecuali bila permintaan memang ditolak sebelum diproses (belum login atau credit tidak cukup).
+  const DITOLAK_AWAL = ['NO_CREDIT', 'NOT_LOGGED_IN'];
   function errText(res) {
     const m = (res && res.message) || 'Terjemahan gagal';
     if (res && DITOLAK_AWAL.includes(res.code)) return m;
@@ -349,6 +440,7 @@
       b.className = 'it-box' + (reg.type === 'sfx' ? ' it-sfx' : reg.type === 'watermark' ? ' it-wm' : '')
         + (reg.dark ? ' it-dark' : ''); // balon hitam: kotak hitam berhuruf putih agar menyatu
       b.style.cssText = `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%`;
+      b._box = reg.box;
       if (reg.minBox) { b._min = reg.minBox; b._max = reg.box; setKotak(b, reg.minBox); } // tumbuh secukupnya, lihat fitText
       const span = document.createElement('span');
       span.textContent = reg.text;
@@ -496,6 +588,9 @@
       if (!hit || hit.sk !== settingsKey()) continue;
       const r = el.getBoundingClientRect();
       if (r.width < MIN_SIZE || r.height < MIN_SIZE || r.bottom < 0 || r.top > innerHeight) continue;
+      // Alamat gambar yang sama bisa dipakai dua elemen (halaman dan penampil di atasnya):
+      // hasil hanya ditempel pada elemen yang benar-benar terlihat.
+      if (!visibleEl(el) || tertutup(el)) continue;
       showResult(el, hit.regions, hit.covered);
     }
   }

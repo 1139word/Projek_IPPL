@@ -1,50 +1,38 @@
 // Popup pengaturan. Setiap pilihan langsung disimpan (tanpa tombol Simpan)
 // dan dipakai pada terjemahan berikutnya karena background membaca chrome.storage.sync.
-// Tampilan mengikuti rancangan: popup utama, credit habis, dan "Advanced khusus Premium".
+// Tampilan: popup utama, credit habis, dan daftar paket credit.
 const LANGS = [
   ['ja', 'Jepang'], ['en', 'Inggris'], ['id', 'Indonesia'], ['ko', 'Korea'],
   ['zh-CN', 'Mandarin (Sederhana)'], ['zh-TW', 'Mandarin (Tradisional)'],
   ['es', 'Spanyol'], ['fr', 'Prancis'], ['de', 'Jerman'],
   ['ru', 'Rusia'], ['th', 'Thailand'], ['vi', 'Vietnam']
 ];
-// model: [kode, nama, biaya, khusus Premium?]
+// model: [kode, nama, biaya]. Semua akun boleh memakai semua model.
 const OPTIONS = {
   src: [['auto', 'Deteksi otomatis']].concat(LANGS),
   tgt: LANGS,
-  model: [['std', 'Gemini Standar', '1 credit', false], ['adv', 'Gemini Advanced', '1 credit', true]]
+  model: [['std', 'Gemini Standar', '1 credit'], ['adv', 'Gemini Advanced', '1 credit']]
 };
 const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
-let plan = 'free'; // diisi dari akun setelah login
-
 let state = { ...DEFAULTS };
 let savedTimer = null;
 const $ = (sel, root = document) => root.querySelector(sel);
 
-// ---- Pindah tampilan (utama / credit habis / Advanced khusus Premium) ----
+// ---- Pindah tampilan (login / utama / credit habis / paket credit) ----
 function show(view) {
-  for (const id of ['vLogin', 'vMain', 'vHabis', 'vAdv', 'vPaket']) $('#' + id).hidden = id !== view;
+  for (const id of ['vLogin', 'vMain', 'vHabis', 'vPaket']) $('#' + id).hidden = id !== view;
   $('#msg').textContent = '';
 }
 
-// ---- Credit ----
-// c = credit dari server: { left, quota, resetAt } dengan resetAt berupa teks tanggal ISO.
-function sisaWaktu(resetAt) {
-  const ms = Math.max(0, Date.parse(resetAt) - Date.now());
-  const hari = Math.floor(ms / 86400000);
-  const jam = Math.floor((ms % 86400000) / 3600000);
-  return hari >= 1 ? `${hari} hari ${jam} jam` : `${jam} jam`;
-}
+// ---- Credit (UC-02) ----
+// c = credit dari server: { left }. Saldo tidak punya kuota dan tidak direset,
+// jadi yang ditampilkan hanya jumlahnya.
 function renderCredit(c) {
   if (!c) return;
-  $('#creditText').textContent = `${c.left} / ${c.quota} tersisa`;
+  $('#creditText').textContent = `${c.left} credit`;
   $('#creditText').classList.toggle('empty', c.left === 0);
-  $('#creditBar').classList.toggle('full', c.left === 0);
-  // Bar menunjukkan sisa credit (4/10 = 40%), sesuai rancangan. Saat habis, bar penuh berwarna merah.
-  $('#creditBar i').style.width = (c.left === 0 ? 100 : (c.left / c.quota) * 100) + '%';
-  $('#resetNote').textContent = `Credit diperbarui dalam ${sisaWaktu(c.resetAt)}`;
-  $('#habisNote').textContent = `Credit diperbarui dalam ${sisaWaktu(c.resetAt)}. Upgrade ke Premium untuk kuota lebih besar.`;
-  if (c.left === 0) show('vHabis');
-  else if (!$('#vHabis').hidden) show('vMain');
+  if (c.left === 0) { if (!$('#vMain').hidden) show('vHabis'); }
+  else if (!$('#vHabis').hidden) show('vMain'); // baru saja membeli credit
 }
 
 // ---- Dropdown pengaturan ----
@@ -70,24 +58,17 @@ function render() {
       b.setAttribute('role', 'option');
       const left = document.createElement('span');
       left.textContent = o[1];
-      if (key === 'model' && o[3] && plan !== 'premium') {
-        const badge = document.createElement('span');
-        badge.className = 'bdg';
-        badge.textContent = 'PREMIUM';
-        left.appendChild(badge);
-      }
       const right = document.createElement('span');
       right.className = key === 'model' ? 'sub' : '';
       right.textContent = key === 'model' ? o[2] : o[0] === state[key] ? '✓' : '';
       b.append(left, right);
-      b.addEventListener('click', () => choose(key, o[0], o[3]));
+      b.addEventListener('click', () => choose(key, o[0]));
       dd.appendChild(b);
     }
   });
 }
-function choose(key, value, premiumOnly) {
+function choose(key, value) {
   closeAll();
-  if (key === 'model' && premiumOnly && plan !== 'premium') { show('vAdv'); return; }
   $('#msg').textContent = '';
   state[key] = value;
   chrome.storage.sync.set({ [key]: value }).then(() => {
@@ -129,13 +110,9 @@ function renderAkun(session) {
   $('#tglRow').hidden = !user;
   $('#creditBox').hidden = !user;
   if (user) {
-    const planBerubah = plan !== user.plan;
-    plan = user.plan;
     // Baru dibuka atau baru saja login: tampilkan pengaturan (renderCredit bisa menggantinya dengan "credit habis").
-    if (!['vMain', 'vHabis', 'vAdv', 'vPaket'].some((id) => !$('#' + id).hidden)) show('vMain');
+    if (!['vMain', 'vHabis', 'vPaket'].some((id) => !$('#' + id).hidden)) show('vMain');
     renderCredit(user.credit);
-    renderPlan(user);
-    if (planBerubah) render(); // lencana PREMIUM di pilihan model mengikuti paket akun
     $('#akunEmail').textContent = user.email;
     av.title = user.email;
     av.setAttribute('aria-label', user.email);
@@ -150,8 +127,6 @@ function renderAkun(session) {
     }
     $('#tos').textContent = '';
   } else {
-    plan = 'free';
-    $('#premiumRow').hidden = true;
     show('vLogin');
     av.innerHTML = AVATAR_DEFAULT;
     av.title = 'Belum login';
@@ -187,66 +162,68 @@ $('#tgl').addEventListener('click', () => {
 });
 chrome.storage.sync.get({ enabled: true }).then((v) => renderTgl(v.enabled !== false));
 
-// ---- Premium (UC-07) ----
-const tanggal = (iso) => new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+// ---- Paket credit (UC-07) ----
 const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 
-// Akun Premium: lencana + tanggal berakhir di atas, tombol Upgrade diganti tombol melihat paket.
-function renderPlan(user) {
-  const premium = user.plan === 'premium';
-  $('#premiumRow').hidden = !premium;
-  $('#premiumUntil').textContent = premium && user.premiumUntil ? `Aktif sampai ${tanggal(user.premiumUntil)}` : '';
-  $('#btnUpgrade').textContent = premium ? 'Lihat paket Premium' : 'Upgrade ke Premium';
+// Satu kartu per paket: nama, jumlah credit, harga, dan tombol Beli.
+// Harga per credit sengaja tidak ditampilkan (keputusan rancangan).
+function kartuPaket(p) {
+  const card = document.createElement('div');
+  card.className = 'card paket';
+  const kiri = document.createElement('div');
+  const nama = document.createElement('b');
+  nama.textContent = `${p.credits} credit`;
+  const harga = document.createElement('div');
+  harga.className = 'note';
+  harga.textContent = rupiah(p.price);
+  kiri.append(nama, harga);
+  const beli = document.createElement('button');
+  beli.type = 'button';
+  beli.className = 'btn mini';
+  beli.textContent = 'Beli';
+  beli.setAttribute('aria-label', `Beli ${p.credits} credit seharga ${rupiah(p.price)}`);
+  // UC-08: pembayaran QRIS dibuka di tab, karena popup tertutup begitu pengguna mengklik di luar popup.
+  beli.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('beli.html') + '?paket=' + encodeURIComponent(p.id) });
+    window.close();
+  });
+  card.append(kiri, beli);
+  return card;
 }
 
 async function bukaPaket() {
   show('vPaket');
-  const premium = plan === 'premium';
-  // A4: Premium sudah aktif -> tampilkan status, tidak diarahkan membayar lagi.
-  $('#btnBeli').hidden = premium;
-  $('#paketFreeNow').textContent = premium ? '' : 'saat ini';
-  const res = await chrome.runtime.sendMessage({ type: 'plans' });
-  if (!res || !res.ok) { $('#msg').textContent = (res && res.message) || 'Info paket tidak bisa diambil dari server.'; return; }
-  const { free, premium: p } = res.plans;
-  $('#paketFree').textContent = `${free.quota} credit per minggu · ${free.features[0]}`;
-  $('#paketHarga').innerHTML = '';
-  $('#paketHarga').append(rupiah(p.price) + ' ');
-  const per = document.createElement('span');
-  per.className = 'note';
-  per.textContent = `/ ${p.days} hari`;
-  $('#paketHarga').append(per);
-  $('#paketPremium').replaceChildren(...[`${p.quota} credit per minggu`, ...p.features].map((t) => {
-    const li = document.createElement('li');
-    li.textContent = t;
-    return li;
-  }));
-  const { session } = await chrome.storage.local.get('session');
-  const until = session && session.user && session.user.premiumUntil;
-  $('#paketBayar').textContent = premium && until
-    ? `Premium Anda aktif sampai ${tanggal(until)}. Paket bisa dibeli lagi setelah masa aktif berakhir.`
-    : 'Dibayar dengan QRIS (Midtrans). Satu kali bayar untuk satu periode, tidak diperpanjang otomatis.';
+  const res = await chrome.runtime.sendMessage({ type: 'packages' });
+  if (!res || !res.ok) {
+    $('#paketList').replaceChildren();
+    $('#msg').textContent = (res && res.message) || 'Daftar paket tidak bisa diambil dari server.';
+    return;
+  }
+  if (!res.packages.length) {
+    $('#paketList').replaceChildren();
+    $('#msg').textContent = 'Belum ada paket credit yang dijual.';
+    return;
+  }
+  $('#paketList').replaceChildren(...res.packages.map(kartuPaket));
 }
 
 // ---- Tombol ----
-document.querySelectorAll('.premium').forEach((b) => b.addEventListener('click', bukaPaket));
-$('#btnKembali').addEventListener('click', () => show('vMain'));
-// UC-08: pembayaran QRIS dibuka di tab, karena popup tertutup begitu pengguna mengklik di luar popup.
-$('#btnBeli').addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('premium.html') });
-  window.close();
+document.querySelectorAll('.beli').forEach((b) => b.addEventListener('click', bukaPaket));
+$('#btnKembali').addEventListener('click', async () => {
+  // Kembali ke pengaturan, atau ke layar "credit habis" bila saldo masih nol.
+  const { session } = await chrome.storage.local.get('session');
+  show('vMain');
+  renderCredit(session && session.user && session.user.credit);
 });
-$('#btnStandar').addEventListener('click', () => show('vMain'));
 $('#btnTutup').addEventListener('click', () => window.close());
 
 // ---- Muat data awal ----
-// Akun dulu (menentukan paket Free/Premium), baru pengaturan. Data tersimpan ditampilkan dulu
-// supaya cepat, lalu background meminta data terbaru (credit, paket) ke server.
+// Data tersimpan ditampilkan dulu supaya cepat, lalu background meminta data terbaru (saldo credit) ke server.
 (async () => {
   const { session } = await chrome.storage.local.get('session');
   renderAkun(session);
   const s = await chrome.storage.sync.get(DEFAULTS);
   state = { ...DEFAULTS, ...s };
-  if (state.model === 'adv' && plan !== 'premium') state.model = 'std';
   render();
   chrome.runtime.sendMessage({ type: 'me' });
 })();

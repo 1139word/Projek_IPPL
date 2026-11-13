@@ -192,7 +192,7 @@ async function logoutAkun() {
   return { ok: true };
 }
 
-// Ambil data akun terbaru (foto, paket, credit). Sesi yang sudah tidak sah di server dihapus.
+// Ambil data akun terbaru (foto dan saldo credit). Sesi yang sudah tidak sah di server dihapus.
 async function refreshMe() {
   const session = await getSession();
   if (!session) return null;
@@ -211,17 +211,28 @@ async function refreshMe() {
   return session;
 }
 
-// ---- Premium (UC-08) ----
-// Dipakai halaman premium.html. Semua permintaan membawa token sesi; backend yang bertanya ke Midtrans.
+// ---- Paket credit (UC-07, UC-08) ----
+// Dipakai popup dan halaman beli.html. Semua permintaan membawa token sesi; backend yang bertanya ke Midtrans.
 const PESAN_SERVER = 'Server tidak bisa dihubungi. Pastikan backend menyala.';
 
-async function pesananBaru() {
+// UC-07: daftar paket credit yang dijual. Tidak perlu login.
+async function daftarPaket() {
+  try {
+    const r = await callApi('GET', '/api/packages');
+    if (r.status === 200) return { ok: true, packages: r.data.packages };
+    return { ok: false, message: 'Daftar paket tidak bisa diambil dari server.' };
+  } catch (e) {
+    return { ok: false, message: PESAN_SERVER };
+  }
+}
+
+// UC-08: membuat pesanan QRIS untuk satu paket.
+async function pesananBaru(packageId) {
   const session = await getSession();
   if (!session) return { ok: false, code: 'NOT_LOGGED_IN', message: PESAN_LOGIN };
   try {
-    const r = await callApi('POST', '/api/orders', { token: session.token });
+    const r = await callApi('POST', '/api/orders', { token: session.token, body: { packageId } });
     if (r.status === 200) return { ok: true, order: r.data };
-    if (r.data.code === 'ALREADY_PREMIUM') return { ok: false, code: r.data.code, message: r.data.message, user: (await refreshMe() || {}).user };
     return { ok: false, code: r.data.code, message: r.data.message || 'Pesanan tidak bisa dibuat.' };
   } catch (e) {
     return { ok: false, code: 'SERVER_DOWN', message: PESAN_SERVER };
@@ -234,7 +245,7 @@ async function statusPesanan(orderId) {
   try {
     const r = await callApi('GET', '/api/orders/' + encodeURIComponent(orderId), { token: session.token });
     if (r.status !== 200) return { ok: false, code: r.data.code, message: r.data.message };
-    // Data akun terbaru (paket Premium, credit) langsung disimpan, jadi popup ikut berubah.
+    // Saldo credit terbaru langsung disimpan, jadi popup ikut berubah.
     await chrome.storage.local.set({ session: { ...session, user: r.data.user } });
     return { ok: true, order: r.data.order, user: r.data.user };
   } catch (e) {
@@ -251,7 +262,7 @@ async function gambarQr(orderId) {
       const d = await res.json().catch(() => ({}));
       return { ok: false, message: d.message || 'Gambar QR tidak bisa diambil.' };
     }
-    // Ubah gambar menjadi data URL agar bisa langsung dipakai di <img> halaman premium.
+    // Ubah gambar menjadi data URL agar bisa langsung dipakai di <img> halaman beli.html.
     const blob = await res.blob();
     const bytes = new Uint8Array(await blob.arrayBuffer());
     let bin = '';
@@ -263,7 +274,7 @@ async function gambarQr(orderId) {
 }
 
 // Asal permintaan ditentukan dari alamat pengirim, bukan dari isi pesan: halaman viewer.html
-// (fitur File Explorer) = 'explorer'. Backend memakai ini untuk memeriksa akun Premium.
+// (fitur File Explorer) = 'explorer'. Backend hanya mencatatnya di log.
 function asalPermintaan(sender) {
   return sender && sender.url && sender.url.startsWith(chrome.runtime.getURL('viewer.html')) ? 'explorer' : 'page';
 }
@@ -302,15 +313,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     logoutAkun().then(sendResponse);
     return true;
   }
-  if (msg && msg.type === 'plans') {
-    // UC-07: info paket (harga, kuota, fitur). Tidak perlu login.
-    callApi('GET', '/api/plans')
-      .then((r) => sendResponse(r.status === 200 ? { ok: true, plans: r.data } : { ok: false, message: 'Info paket tidak bisa diambil dari server.' }))
-      .catch(() => sendResponse({ ok: false, message: 'Server tidak bisa dihubungi. Pastikan backend menyala.' }));
+  if (msg && msg.type === 'packages') {
+    daftarPaket().then(sendResponse);
     return true;
   }
   if (msg && msg.type === 'order-create') {
-    pesananBaru().then(sendResponse);
+    pesananBaru(msg.packageId).then(sendResponse);
     return true;
   }
   if (msg && msg.type === 'order-status') {

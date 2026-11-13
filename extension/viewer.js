@@ -1,7 +1,7 @@
-// Fitur Premium: terjemahkan gambar dari File Explorer Windows.
+// Terjemahkan gambar dari File Explorer Windows (akan diganti halaman unggah gambar).
 // Alur:
 //   1. Menu klik kanan Windows membuka halaman ini dengan lokasi file di alamatnya (?path=...).
-//   2. Cek akun: harus login dan Premium (backend juga memeriksa lagi, jadi pemeriksaan ini hanya
+//   2. Cek akun: harus login (backend juga memeriksa lagi, jadi pemeriksaan ini hanya
 //      supaya pengguna langsung mendapat pesan yang jelas).
 //   3. Minta isi file ke native host (explorer-host/host.js) lewat Native Messaging, karena
 //      extension tidak boleh membaca file di komputer secara langsung.
@@ -77,13 +77,8 @@ async function mulai() {
   status('Memeriksa akun…');
   let sesi = null;
   try { sesi = await chrome.runtime.sendMessage({ type: 'me' }); } catch (e) { /* diperlakukan sebagai belum login */ }
-  const bukaPremium = { label: 'Lihat paket Premium', aksi: () => chrome.tabs.create({ url: chrome.runtime.getURL('premium.html') }) };
   if (!sesi || !sesi.user) {
     pesan('Silakan masuk dulu: klik ikon Image Translator di toolbar, lalu "Masuk dengan Google". Setelah itu muat ulang halaman ini (F5).');
-    return;
-  }
-  if (sesi.user.plan !== 'premium') {
-    pesan('Menerjemahkan gambar dari File Explorer adalah fitur Premium. Akun kamu masih Free.', bukaPremium);
     return;
   }
 

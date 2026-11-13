@@ -31,17 +31,13 @@
   <section class="view" id="vLogin" hidden>
     <div class="ico gray">i</div>
     <h2 class="c">Masuk untuk menerjemahkan</h2>
-    <div class="note c">Credit dan langganan disimpan di akun Google Anda. Akun baru dibuat otomatis saat pertama kali masuk.</div>
+    <div class="note c">Credit disimpan di akun Google Anda. Akun baru dibuat otomatis saat pertama kali masuk dan langsung mendapat 10 credit.</div>
     <button class="btn" type="button" id="btnLogin">Masuk dengan Google</button>
   </section>
 
-  <!-- Status Premium (hanya untuk akun Premium) -->
-  <div class="row start" id="premiumRow" hidden><span class="bdg">PREMIUM</span><span class="note" id="premiumUntil"></span></div>
-
-  <!-- Credit mingguan: tampil di atas setelah login -->
+  <!-- Saldo credit (UC-02): tampil di atas setelah login. Tidak ada kuota dan tidak ada reset. -->
   <section id="creditBox" hidden>
-    <div class="row"><span class="lbl">Credit mingguan</span><span class="lbl strong" id="creditText">… / …</span></div>
-    <div class="bar" id="creditBar"><i></i></div>
+    <div class="row"><span class="lbl">Saldo credit</span><span class="lbl strong" id="creditText">…</span></div>
   </section>
 
   <!-- Tampilan utama: pengaturan -->
@@ -62,42 +58,24 @@
       <div class="dd" role="listbox" hidden></div>
     </div>
     <div class="saved" id="saved" aria-live="polite"></div>
-    <button class="btn ghost premium" type="button" id="btnUpgrade">Upgrade ke Premium</button>
-    <div class="note c" id="resetNote"></div>
+    <button class="btn ghost beli" type="button">Beli credit</button>
   </section>
 
   <!-- Credit habis -->
   <section class="view" id="vHabis" hidden>
     <div class="ico amber">!</div>
-    <h2 class="c">Credit minggu ini habis</h2>
-    <div class="note c" id="habisNote"></div>
-    <button class="btn premium" type="button">Lihat paket Premium</button>
+    <h2 class="c">Credit Anda habis</h2>
+    <div class="note c">Beli paket credit untuk melanjutkan menerjemahkan. Credit tidak memiliki masa berlaku.</div>
+    <button class="btn beli" type="button">Beli credit</button>
     <button class="btn ghost" type="button" id="btnTutup">Tutup</button>
   </section>
 
-  <!-- Pengguna Free memilih model Advanced -->
-  <section class="view" id="vAdv" hidden>
-    <div class="ico amber">★</div>
-    <h2 class="c">Model Advanced khusus Premium</h2>
-    <div class="note c">Hasil lebih akurat untuk teks sulit dan tulisan tangan. Berlangganan untuk memakainya.</div>
-    <button class="btn premium" type="button">Lihat paket Premium</button>
-    <button class="btn ghost" type="button" id="btnStandar">Tetap pakai Standar</button>
-  </section>
-
-  <!-- UC-07 Paket Premium: isi diambil dari server (/api/plans) -->
+  <!-- UC-07 Melihat Paket Credit: isi diambil dari server (/api/packages) -->
   <section class="view" id="vPaket" hidden>
-    <h2>Premium</h2>
-    <div class="card">
-      <div class="row"><b>Free</b><span class="note" id="paketFreeNow">saat ini</span></div>
-      <div class="note" id="paketFree">…</div>
-    </div>
-    <div class="card hi">
-      <div class="row"><b>Premium</b><span class="bdg">PAKET</span></div>
-      <div class="price" id="paketHarga">…</div>
-      <ul class="fit" id="paketPremium"></ul>
-    </div>
-    <div class="note" id="paketBayar">Dibayar dengan QRIS (Midtrans). Satu kali bayar untuk satu periode, tidak diperpanjang otomatis.</div>
-    <button class="btn" type="button" id="btnBeli">Beli Premium (buka di tab)</button>
+    <h2>Paket credit</h2>
+    <div class="note">Credit yang dibeli ditambahkan ke saldo Anda dan tidak memiliki masa berlaku.</div>
+    <div class="pakets" id="paketList"><div class="note">Memuat paket…</div></div>
+    <div class="note">Dibayar dengan QRIS. Halaman pembayaran dibuka di tab baru.</div>
     <button class="btn ghost" type="button" id="btnKembali">Kembali</button>
   </section>
 

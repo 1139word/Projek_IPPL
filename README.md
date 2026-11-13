@@ -27,9 +27,9 @@ Ringkasnya ada tiga bagian yang menyala bersamaan: layanan OCR (Python), backend
 - Selama aplikasi OAuth masih berstatus **Testing**, hanya akun Google yang terdaftar sebagai **Test user** yang bisa masuk. Untuk mencoba dengan akun lain, minta pemilik proyek menambahkan email tersebut di Google Cloud (Google Auth Platform → Audience → Test users).
 - **Jangan** menjalankan `scripts/buat-key-extension.js` kecuali memang ingin mengganti ID: skrip itu khusus pemilik proyek, dan ID baru harus didaftarkan ulang di Google Cloud.
 
-### Fitur Premium: terjemahkan gambar dari File Explorer (Windows)
+### Terjemahkan gambar dari File Explorer (Windows)
 
-Klik kanan file gambar di File Explorer → **Terjemahkan dengan Image Translator** (Windows 11: di **Show more options**). Gambar terbuka di tab Chrome dan langsung diterjemahkan. Hanya untuk akun Premium.
+Klik kanan file gambar di File Explorer → **Terjemahkan dengan Image Translator** (Windows 11: di **Show more options**). Gambar terbuka di tab Chrome dan langsung diterjemahkan.
 
 1. Pasang sekali dari folder proyek: `node scripts/pasang-file-explorer.js` (menulis registry milik akun Windows sendiri, tanpa hak Administrator).
 2. Muat ulang extension di `chrome://extensions` (izin `nativeMessaging`).

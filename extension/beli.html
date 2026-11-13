@@ -3,38 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Premium · Image Translator</title>
+<title>Beli Credit · Image Translator</title>
 <link rel="stylesheet" href="popup.css">
-<link rel="stylesheet" href="premium.css">
+<link rel="stylesheet" href="beli.css">
 </head>
 <body class="tab">
 <main class="halaman">
   <header class="hd"><span class="lg">T</span>Image Translator</header>
-  <h2 class="judul">Pilih paket</h2>
+  <div>
+    <h2 class="judul">Beli credit</h2>
+    <div class="note" id="saldoNote"></div>
+  </div>
 
   <div class="kolom">
+    <!-- Kolom kiri: daftar paket (UC-07). Isinya dari server (/api/packages). -->
     <section class="plan">
-      <b>Free</b>
-      <div class="harga">Rp 0</div>
-      <ul id="fiturFree"><li>…</li></ul>
+      <b>Pilih paket</b>
+      <div class="pakets" id="paketList" role="radiogroup" aria-label="Paket credit"><div class="note">Memuat paket…</div></div>
+      <div class="note">Credit ditambahkan ke saldo Anda setelah pembayaran lunas dan tidak memiliki masa berlaku.</div>
     </section>
 
-    <section class="plan hi">
-      <div class="row"><b>Premium</b><span class="bdg">PAKET</span></div>
-      <div class="harga" id="hargaPremium">…</div>
-      <ul id="fiturPremium"><li>…</li></ul>
-    </section>
-
-    <!-- Kolom pembayaran: isinya berganti sesuai keadaan (memuat / QR / lunas / kedaluwarsa / gagal) -->
+    <!-- Kolom kanan: pembayaran (UC-08). Isinya berganti sesuai keadaan (pilih / memuat / QR / lunas / kedaluwarsa / gagal) -->
     <section class="plan bayar" aria-live="polite">
       <b>Bayar dengan QRIS</b>
 
-      <div id="sMuat" class="tengah"><div class="note">Menyiapkan pembayaran…</div></div>
+      <div id="sPilih" class="tengah"><div class="note">Pilih salah satu paket untuk menampilkan kode QR.</div></div>
+
+      <div id="sMuat" class="tengah" hidden><div class="note">Menyiapkan pembayaran…</div></div>
 
       <div id="sQr" class="tengah" hidden>
+        <div class="ringkas" id="ringkas"></div>
         <div class="qr"><img id="qrImg" alt="Kode QR pembayaran QRIS"></div>
         <div class="timer" id="timer">15:00</div>
-        <div class="note" id="sQrNote">Pindai dengan aplikasi e-wallet atau mobile banking. Status diperbarui otomatis.</div>
+        <div class="note">Pindai dengan aplikasi e-wallet atau mobile banking. Status diperbarui otomatis setiap 3 detik.</div>
         <div class="note kecil" id="orderId"></div>
         <!-- Hanya mode Sandbox: alamat QR untuk ditempel di simulator.sandbox.midtrans.com -->
         <div class="sandbox" id="sandbox" hidden>
@@ -45,15 +46,16 @@
 
       <div id="sLunas" class="tengah" hidden>
         <div class="ico hijau">✓</div>
-        <h3>Premium aktif</h3>
+        <h3>Pembayaran berhasil</h3>
         <div class="note" id="lunasNote"></div>
         <button class="btn" type="button" id="btnSelesai">Tutup halaman</button>
+        <button class="btn ghost" type="button" id="btnLagi">Beli paket lain</button>
       </div>
 
       <div id="sHabis" class="tengah" hidden>
         <div class="ico amber">!</div>
         <h3 id="habisJudul">Waktu pembayaran habis</h3>
-        <div class="note" id="habisNote">QR tidak berlaku lagi dan Premium tidak diaktifkan. Tidak ada biaya yang terpotong.</div>
+        <div class="note">QR tidak berlaku lagi dan credit tidak ditambahkan. Tidak ada biaya yang terpotong.</div>
         <button class="btn" type="button" id="btnUlang">Buat QR baru</button>
       </div>
 
@@ -66,8 +68,8 @@
     </section>
   </div>
 
-  <div class="note">Satu kali bayar untuk satu periode, tidak diperpanjang otomatis. Bila halaman ini tertutup setelah Anda membayar, Premium tetap aktif: buka popup Image Translator untuk memperbaruinya.</div>
+  <div class="note">Bila halaman ini tertutup setelah Anda membayar, credit tetap ditambahkan: buka popup Image Translator untuk memperbarui saldo.</div>
 </main>
-<script src="premium.js"></script>
+<script src="beli.js"></script>
 </body>
 </html>
