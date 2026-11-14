@@ -18,11 +18,18 @@ function storePalsu(users) {
   };
 }
 
-test('Standar dan Advanced sama-sama butuh 1 credit dan boleh dipakai semua akun', () => {
+test('biaya empat model: Gemini 3.1 Pro 2 credit, lainnya 1 credit', () => {
+  assert.strictEqual(checkCredit(akun(10), 'flash-lite'), 1);
+  assert.strictEqual(checkCredit(akun(10), 'deepseek'), 1);
+  assert.strictEqual(checkCredit(akun(10), 'flash'), 1);
+  assert.strictEqual(checkCredit(akun(10), 'pro'), 2);
+  // Semua akun boleh memakai semua model; yang membatasi hanya saldo.
+  assert.strictEqual(checkCredit(akun(2), 'pro'), 2);
+});
+
+test('kode model lama (std/adv) masih diterima dan diarahkan ke model baru', () => {
   assert.strictEqual(checkCredit(akun(10), 'std'), 1);
   assert.strictEqual(checkCredit(akun(10), 'adv'), 1);
-  // Akun dengan credit awal saja (belum pernah membeli) juga boleh memakai Advanced.
-  assert.strictEqual(checkCredit(akun(1), 'adv'), 1);
 });
 
 test('asal permintaan: halaman dan File Explorer boleh untuk semua akun, lainnya ditolak', () => {
@@ -32,8 +39,13 @@ test('asal permintaan: halaman dan File Explorer boleh untuk semua akun, lainnya
 });
 
 test('credit kurang dari biaya ditolak sebelum menerjemahkan', () => {
-  assert.throws(() => checkCredit(akun(0), 'std'), { code: 'NO_CREDIT', status: 402 });
-  assert.throws(() => checkCredit(akun(0), 'adv'), { code: 'NO_CREDIT' });
+  assert.throws(() => checkCredit(akun(0), 'flash-lite'), { code: 'NO_CREDIT', status: 402 });
+  assert.throws(() => checkCredit(akun(0), 'deepseek'), { code: 'NO_CREDIT' });
+});
+
+test('sisa 1 credit tidak cukup untuk Gemini 3.1 Pro, pesannya menyebut biayanya', () => {
+  assert.throws(() => checkCredit(akun(1), 'pro'), (e) => e.code === 'NO_CREDIT' && /butuh 2 credit, sisa 1/.test(e.message));
+  assert.strictEqual(checkCredit(akun(1), 'flash'), 1); // model 1 credit masih bisa
 });
 
 test('model yang tidak dikenal ditolak', () => {
@@ -45,8 +57,8 @@ test('credit dipotong sesuai biaya model', async () => {
   const users = [akun(10, 1), akun(100, 2)];
   const store = storePalsu(users);
   // Salinan, seperti req.user yang dibaca dari database sebelum dipotong.
-  assert.strictEqual((await chargeCredit({ ...users[0] }, 'std', { store })).credit_left, 9);
-  assert.strictEqual((await chargeCredit({ ...users[1] }, 'adv', { store })).credit_left, 99);
+  assert.strictEqual((await chargeCredit({ ...users[0] }, 'flash-lite', { store })).credit_left, 9);
+  assert.strictEqual((await chargeCredit({ ...users[1] }, 'pro', { store })).credit_left, 98);
   assert.strictEqual(users[0].credit_left, 9);
 });
 
@@ -54,6 +66,6 @@ test('dua terjemahan bersamaan dengan sisa 1 credit tidak membuat credit minus',
   const users = [akun(1)];
   const store = storePalsu(users);
   const dibaca = { ...users[0] }; // keduanya sudah lolos checkCredit dengan sisa 1
-  await Promise.all([chargeCredit(dibaca, 'std', { store }), chargeCredit(dibaca, 'std', { store })]);
+  await Promise.all([chargeCredit(dibaca, 'flash', { store }), chargeCredit(dibaca, 'flash', { store })]);
   assert.strictEqual(users[0].credit_left, 0);
 });

@@ -7,7 +7,7 @@ Ada tiga bagian yang harus menyala bersamaan: layanan OCR, backend (bersama MySQ
 ```
 Extension (Chrome) ──► Backend Node.js :3000 ──► Layanan OCR Python :5001 (RapidOCR)
                                 │
-                                ├──► Gemini API (terjemahan)
+                                ├──► Gemini API / DeepSeek API (terjemahan)
                                 ├──► Google (memeriksa token login)
                                 └──► MySQL :3306 (akun, sesi, credit)
 ```
@@ -50,7 +50,7 @@ notepad .env
 npm install
 npm run cek-db
 ```
-Di Notepad, isi `GEMINI_API_KEY` (API key Gemini milikmu) dan `DB_PASSWORD` (kata sandi akun MySQL backend tadi), lalu simpan. `GOOGLE_CLIENT_ID` sudah terisi. `npm run cek-db` harus menampilkan ✓; jika `Access denied`, periksa `DB_PASSWORD` lalu buka terminal baru.
+Di Notepad, isi `GEMINI_API_KEY` (API key Gemini milikmu), `DEEPSEEK_API_KEY` (API key DeepSeek, boleh dikosongkan bila model DeepSeek belum dipakai), dan `DB_PASSWORD` (kata sandi akun MySQL backend tadi), lalu simpan. `GOOGLE_CLIENT_ID` sudah terisi. `npm run cek-db` harus menampilkan ✓; jika `Access denied`, periksa `DB_PASSWORD` lalu buka terminal baru.
 
 ### Extension
 1. Buka `chrome://extensions`, aktifkan **Developer mode**.
@@ -80,14 +80,18 @@ Tunggu sampai muncul `Backend siap di http://localhost:3000`.
 
 | Pesan | Arti |
 |---|---|
-| `OK 3 balon \| OCR 1200 ms (proses 1100 ms) \| Gemini 1500 ms` | Berhasil. Jika angka OCR jauh lebih besar dari angka "proses", waktu habis untuk antre/kirim data, bukan untuk OCR |
+| `OK 3 balon \| OCR 1200 ms (proses 1100 ms) \| Gemini 3.1 Flash-Lite 1500 ms` | Berhasil. Jika angka OCR jauh lebih besar dari angka "proses", waktu habis untuk antre/kirim data, bukan untuk OCR |
 | `GAGAL [OCR_DOWN]` | Jendela 1 belum menjalankan `python server.py` |
 | `GAGAL [NO_TEXT]` | OCR tidak menemukan teks pada gambar |
 | `GAGAL [BAD_API_KEY]` | API key di `.env` salah atau belum diisi |
 | `GAGAL [ACCESS_DENIED]` | Google menolak project/akun pemilik API key (sering terjadi pada akun kampus). Buat API key dengan akun Gmail pribadi |
-| `GAGAL [MODEL_NOT_FOUND]` | Nama model Gemini di `.env` perlu diganti |
-| `GAGAL [QUOTA]` | Kuota gratis Gemini sedang habis, tunggu sebentar |
-| `GAGAL [BAD_RESPONSE]` | Jawaban Gemini tidak terbaca dua kali berturut-turut (sudah diulang otomatis sekali). Coba lagi |
+| `GAGAL [MODEL_NOT_FOUND]` | Nama model sudah tidak tersedia; isi nama baru di `.env` (`GEMINI_MODEL_...` atau `DEEPSEEK_MODEL`) |
+| `GAGAL [OVERLOADED]` | Server Gemini/DeepSeek sedang penuh. Sudah diulang otomatis sekali setelah 2 detik; coba lagi sebentar atau pilih model lain |
+| `GAGAL [NO_API_KEY]` | API key model itu belum diisi di `.env` (misalnya `DEEPSEEK_API_KEY`) |
+| `GAGAL [DEEPSEEK_NO_BALANCE]` | Saldo akun DeepSeek habis; isi ulang di platform.deepseek.com |
+| `GAGAL [QUOTA]` | Kuota Gemini atau batas DeepSeek sedang habis, tunggu sebentar |
+| `GAGAL [NEEDS_BILLING]` | Model itu (misalnya Gemini 3.1 Pro) tidak punya kuota gratis sama sekali; perlu billing di Google AI Studio, atau pilih model lain |
+| `GAGAL [BAD_RESPONSE]` | Jawaban model tidak terbaca dua kali berturut-turut (sudah diulang otomatis sekali). Coba lagi |
 | `GAGAL [DB_ERROR]` | MySQL tidak bisa diakses: cek layanan MySQL84 dan isi `DB_` di `.env` (`npm run cek-db`) |
 | `GAGAL [GOOGLE_WRONG_CLIENT]` | Token login bukan untuk Client ID di `.env`: cek `GOOGLE_CLIENT_ID` |
 | Popup menolak login ("access blocked") | Akun Google belum terdaftar sebagai Test user, atau ID extension bukan `dnfnbaicahmmahjbpijjcehdoaokkjeg` |
@@ -97,7 +101,7 @@ Tunggu sampai muncul `Backend siap di http://localhost:3000`.
 cd FOLDER_PROYEK\backend
 npm test
 ```
-Tes ini tidak memakai internet, API key, maupun MySQL (OCR, Gemini, Google, dan database ditiru).
+Tes ini tidak memakai internet, API key, maupun MySQL (OCR, Gemini, DeepSeek, Google, dan database ditiru).
 
 ## Catatan
 - OCR saat ini memakai **RapidOCR** (model PaddleOCR versi ONNX) karena mudah dipasang. Model bawaannya paling baik untuk teks Inggris dan Mandarin; teks Jepang akan ditingkatkan setelah UTS.

@@ -8,12 +8,20 @@ const LANGS = [
   ['ru', 'Rusia'], ['th', 'Thailand'], ['vi', 'Vietnam']
 ];
 // model: [kode, nama, biaya]. Semua akun boleh memakai semua model.
+// Harus sama dengan backend/lib/models.js (backend yang menentukan biaya sebenarnya).
 const OPTIONS = {
   src: [['auto', 'Deteksi otomatis']].concat(LANGS),
   tgt: LANGS,
-  model: [['std', 'Gemini Standar', '1 credit'], ['adv', 'Gemini Advanced', '1 credit']]
+  model: [
+    ['flash-lite', 'Gemini 3.1 Flash-Lite', '1 credit'],
+    ['deepseek', 'DeepSeek V4.1 Flash', '1 credit'],
+    ['flash', 'Gemini 3.5 Flash', '1 credit'],
+    ['pro', 'Gemini 3.1 Pro', '2 credit']
+  ]
 };
-const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
+const DEFAULTS = { src: 'auto', tgt: 'en', model: 'flash-lite' };
+// Kode lama dari versi dua model, diganti ke model baru yang paling mirip.
+const MODEL_LAMA = { std: 'flash-lite', adv: 'flash' };
 let state = { ...DEFAULTS };
 let savedTimer = null;
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -224,6 +232,10 @@ $('#btnTutup').addEventListener('click', () => window.close());
   renderAkun(session);
   const s = await chrome.storage.sync.get(DEFAULTS);
   state = { ...DEFAULTS, ...s };
+  if (!OPTIONS.model.some((o) => o[0] === state.model)) {
+    state.model = MODEL_LAMA[state.model] || DEFAULTS.model;
+    chrome.storage.sync.set({ model: state.model }); // simpan kode baru agar semua tab memakai yang sama
+  }
   render();
   chrome.runtime.sendMessage({ type: 'me' });
 })();

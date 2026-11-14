@@ -2,17 +2,19 @@
 // dan potong hanya setelah terjemahan berhasil (gagal atau teks tidak ditemukan = gratis).
 // Semua akun boleh memakai semua model; yang membatasi hanya saldo credit.
 
-// Biaya per gambar. Daftar ini masih dua model lama; empat model baru (termasuk yang 2 credit)
-// dikerjakan pada tahap model.
-const COST = { std: 1, adv: 1 };
+const { MODELS, findModel } = require('./models');
+
+// Biaya per gambar, diambil dari daftar model (models.js): Gemini 3.1 Pro 2 credit, lainnya 1 credit.
+const COST = Object.fromEntries(MODELS.map((m) => [m.id, m.cost]));
 
 class CreditError extends Error {
   constructor(code, message, status) { super(message); this.code = code; this.status = status; }
 }
 
 function costOf(model) {
-  if (!Object.hasOwn(COST, model)) throw new CreditError('BAD_REQUEST', 'Model terjemahan tidak dikenal', 400);
-  return COST[model];
+  const m = findModel(model);
+  if (!m) throw new CreditError('BAD_REQUEST', 'Model terjemahan tidak dikenal', 400);
+  return m.cost;
 }
 
 // Asal permintaan: 'page' = tombol di halaman situs, 'explorer' = gambar dari File Explorer
@@ -24,7 +26,11 @@ function checkCredit(user, model, { source = 'page' } = {}) {
   const cost = costOf(model);
   if (!SOURCES.includes(source)) throw new CreditError('BAD_REQUEST', 'Asal permintaan tidak dikenal', 400);
   if (user.credit_left < cost) {
-    throw new CreditError('NO_CREDIT', 'Credit tidak cukup. Buka popup Image Translator untuk membeli credit.', 402);
+    // Saldo masih ada tetapi kurang untuk model 2 credit: sebutkan agar pengguna bisa memilih model lain.
+    const pesan = user.credit_left > 0
+      ? `Credit tidak cukup: model ini butuh ${cost} credit, sisa ${user.credit_left}. Pilih model 1 credit atau beli credit di popup Image Translator.`
+      : 'Credit tidak cukup. Buka popup Image Translator untuk membeli credit.';
+    throw new CreditError('NO_CREDIT', pesan, 402);
   }
   return cost;
 }

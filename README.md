@@ -4,7 +4,7 @@ Ekstensi Chrome untuk menerjemahkan teks pada gambar komik langsung di halaman.
 
 - `extension/`: kode Chrome extension
 - `docs/teknologi.md`: keputusan teknologi dan kontrak API
-- `backend/`: server Node.js (Express): OCR + Gemini
+- `backend/`: server Node.js (Express): OCR + terjemahan (Gemini / DeepSeek)
 - `ocr-service/`: layanan OCR Python (RapidOCR)
 - `docs/instalasi.md`: menyiapkan lingkungan pengembangan (Windows)
 - `docs/menjalankan.md`: menjalankan prototype (OCR, backend, extension)
@@ -17,7 +17,7 @@ Cara menjalankan lengkap: lihat `docs/menjalankan.md`.
 Ringkasnya ada tiga bagian yang menyala bersamaan: layanan OCR (Python), backend (Node.js + MySQL), dan extension di Chrome. Langkah rinci ada di `docs/menjalankan.md`; alat yang perlu dipasang ada di `docs/instalasi.md`.
 
 1. **Database:** jalankan `backend/db/schema.sql` di MySQL dan buat akun MySQL khusus backend.
-2. **Backend:** salin `backend/.env.example` menjadi `backend/.env`, isi API key Gemini dan kata sandi akun MySQL backend, lalu `npm install` dan `npm start` di folder `backend`.
+2. **Backend:** salin `backend/.env.example` menjadi `backend/.env`, isi API key Gemini (dan DeepSeek bila dipakai) serta kata sandi akun MySQL backend, lalu `npm install` dan `npm start` di folder `backend`.
 3. **OCR:** buat `venv` di folder `ocr-service`, pasang `requirements.txt`, lalu `venv\Scripts\python server.py`.
 4. **Extension:** `chrome://extensions` → aktifkan **Developer mode** → **Load unpacked** → pilih folder `extension/`. Klik ikon extension, lalu **Masuk dengan Google**.
 

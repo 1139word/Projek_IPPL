@@ -8,7 +8,7 @@
   const sessions = new Map(); // elemen gambar -> { img, layer, bar, load, err, w, h }
   const dismissed = new WeakSet(); // gambar yang hasilnya sengaja ditutup pengguna: jangan dipulihkan otomatis
   const cache = new Map(); // alamat gambar -> { regions, sk }; hasil dipakai ulang tanpa memanggil server
-  let settings = { src: 'auto', tgt: 'en', model: 'std' };
+  let settings = { src: 'auto', tgt: 'en', model: 'flash-lite' };
   chrome.storage.sync.get(settings).then((v) => { settings = { ...settings, ...v }; });
   chrome.storage.onChanged.addListener((ch) => {
     for (const k in ch) settings[k] = ch[k].newValue;

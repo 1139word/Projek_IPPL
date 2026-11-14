@@ -5,11 +5,18 @@ const MOCK = false;
 const API_BASE = 'http://localhost:3000';
 const API_URL = API_BASE + '/api/translate';
 
-const DEFAULTS = { src: 'auto', tgt: 'en', model: 'std' };
+const DEFAULTS = { src: 'auto', tgt: 'en', model: 'flash-lite' };
+// Kode model yang dikenal (sama dengan popup.js dan backend/lib/models.js) dan kode lama
+// dari versi dua model (std/adv) yang mungkin masih tersimpan di browser.
+const MODEL_IDS = ['flash-lite', 'deepseek', 'flash', 'pro'];
+const MODEL_LAMA = { std: 'flash-lite', adv: 'flash' };
+function modelSah(m) {
+  return MODEL_IDS.includes(m) ? m : MODEL_LAMA[m] || DEFAULTS.model;
+}
 
 async function getSettings() {
   const s = await chrome.storage.sync.get(DEFAULTS);
-  return { ...DEFAULTS, ...s };
+  return { ...DEFAULTS, ...s, model: modelSah(s.model) };
 }
 
 // Banyak situs (misalnya Pixiv, i.pximg.net) menolak unduhan gambar yang tidak membawa Referer

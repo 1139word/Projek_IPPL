@@ -9,6 +9,8 @@ const { loginWithGoogle, userFromSession, logout, publicUser } = require('./lib/
 const { userStore } = require('./lib/auth-store');
 const { verifyGoogleToken } = require('./lib/google');
 const { checkCredit, chargeCredit } = require('./lib/credit');
+const { findModel, DEFAULT_MODEL } = require('./lib/models');
+const labelModel = (id) => (findModel(id) || { label: id }).label;
 const { daftarPaket, buatPesanan, cekPesanan, publicOrder } = require('./lib/pembelian');
 const { orderStore } = require('./lib/order-store');
 const midtrans = require('./lib/midtrans');
@@ -149,13 +151,14 @@ app.get('/api/orders/:id/qr', requireLogin, async (req, res) => {
 
 // Wajib login. Credit dicek sebelum OCR, lalu dipotong hanya bila terjemahan berhasil.
 app.post('/api/translate', requireLogin, async (req, res) => {
-  const { image, src, tgt, model = 'std', source = 'page' } = req.body || {};
+  const { image, src, tgt, source = 'page' } = req.body || {};
+  const model = (req.body && req.body.model) || DEFAULT_MODEL;
   try {
     checkCredit(req.user, model, { source });
     const result = await translateImage({ image, src, tgt, model });
     const user = await chargeCredit(req.user, model, { store: userStore });
     const m = result.meta;
-    console.log(`OK  ${m.balloons} balon (sfx ${m.sfx}, watermark ${m.watermark}) | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | Gemini ${m.translateMs} ms | ${model}->${tgt}${source === 'explorer' ? ' (Explorer)' : ''} | ${user.email} sisa ${user.credit_left}`);
+    console.log(`OK  ${m.balloons} balon (sfx ${m.sfx}, watermark ${m.watermark}) | OCR ${m.ocrMs} ms (proses ${m.ocrProcessMs ?? '?'} ms) | ${labelModel(model)} ${m.translateMs} ms | ->${tgt}${source === 'explorer' ? ' (Explorer)' : ''} | ${user.email} sisa ${user.credit_left}`);
     // LOG_DETAIL=1 di .env: tampilkan setiap balon (jenis, teks hasil OCR, terjemahan) untuk diagnosis.
     if (process.env.LOG_DETAIL === '1') {
       for (const r of result.regions) console.log(`    [${r.type}] ${r.original}  =>  ${r.text}`);
@@ -164,7 +167,7 @@ app.post('/api/translate', requireLogin, async (req, res) => {
     res.json({ ...result, credit: publicUser(user).credit });
   } catch (e) {
     const status = e.status || (e.code === 'BAD_IMAGE' ? 400 : 502);
-    console.log(`GAGAL [${e.code || 'ERROR'}] ${e.message}`);
+    console.log(`GAGAL [${e.code || 'ERROR'}] ${e.message}${e.detail ? `\n    (pesan asli: ${e.detail.slice(0, 400)})` : ''}`);
     res.status(status).json({ code: e.code || 'ERROR', message: e.message || 'Terjemahan gagal' });
   }
 });
@@ -173,6 +176,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
   console.log(`Backend siap di http://localhost:${PORT}`);
   if (!process.env.GEMINI_API_KEY) console.log('Peringatan: GEMINI_API_KEY belum diisi di .env');
+  if (!process.env.DEEPSEEK_API_KEY) console.log('Catatan: DEEPSEEK_API_KEY belum diisi di .env (model DeepSeek V4.1 Flash belum bisa dipakai)');
   if (!process.env.MIDTRANS_SERVER_KEY) console.log('Catatan: MIDTRANS_SERVER_KEY belum diisi di .env (pembelian paket credit belum bisa dipakai)');
   if (!process.env.GOOGLE_CLIENT_ID) console.log('Peringatan: GOOGLE_CLIENT_ID belum diisi di .env (login Google belum bisa dipakai)');
 });

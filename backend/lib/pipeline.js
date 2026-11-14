@@ -1,15 +1,16 @@
-// Alur penerjemahan satu gambar: OCR -> kelompokkan per balon -> Gemini -> kotak hasil.
+// Alur penerjemahan satu gambar: OCR, kelompokkan per balon, terjemahkan (Gemini/DeepSeek), kotak hasil.
 // Dipisah dari server.js agar bisa diuji tanpa Express.
 
 const { runOcr } = require('./ocr');
 const { groupLines } = require('./group');
-const { translateTexts } = require('./gemini');
+const { translateTexts } = require('./terjemah');
+const { DEFAULT_MODEL } = require('./models');
 
 class PipelineError extends Error {
   constructor(code, message, status) { super(message); this.code = code; this.status = status; }
 }
 
-async function translateImage({ image, src = 'auto', tgt = 'en', model = 'std' }, deps = {}) {
+async function translateImage({ image, src = 'auto', tgt = 'en', model = DEFAULT_MODEL }, deps = {}) {
   const ocr = deps.runOcr || runOcr;
   const translate = deps.translateTexts || translateTexts;
   if (!image || typeof image !== 'string') throw new PipelineError('BAD_REQUEST', 'Gambar tidak dikirim', 400);

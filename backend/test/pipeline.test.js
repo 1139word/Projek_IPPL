@@ -97,7 +97,7 @@ test('alur lengkap: OCR -> Gemini -> kotak pecahan 0..1', async (t) => {
   const gemini = await serverPalsu((req, body, res) => {
     promptDiterima = body.contents[0].parts[0].text;
     assert.strictEqual(req.headers['x-goog-api-key'], 'kunci-uji');
-    assert.match(req.url, /gemini-3\.5-flash-lite:generateContent/);
+    assert.match(req.url, /gemini-3\.1-flash-lite:generateContent/);
     kirim(res, 200, { candidates: [{ content: { parts: [{ text: '{"translations":[{"id":0,"type":"dialog","text":"HALO DI SANA"}]}' }] } }] });
   });
   t.after(() => { ocr.close(); gemini.close(); });
@@ -105,7 +105,7 @@ test('alur lengkap: OCR -> Gemini -> kotak pecahan 0..1', async (t) => {
   process.env.GEMINI_BASE_URL = `http://127.0.0.1:${gemini.address().port}`;
   process.env.GEMINI_API_KEY = 'kunci-uji';
 
-  const hasil = await translateImage({ image: 'AAAA', src: 'en', tgt: 'id', model: 'std' });
+  const hasil = await translateImage({ image: 'AAAA', src: 'en', tgt: 'id', model: 'flash-lite' });
   assert.strictEqual(hasil.regions.length, 1);
   assert.strictEqual(hasil.regions[0].text, 'HALO DI SANA');
   assert.strictEqual(hasil.regions[0].original, 'HELLO THERE');
