@@ -46,7 +46,7 @@ async function setReferer(imageUrl, pageUrl) {
 }
 
 async function imageToBase64(url, pageUrl) {
-  // Gambar dari File Explorer sudah berupa data URL (dibaca oleh native host): cukup ambil isinya.
+  // Gambar dari halaman unggah sudah berupa data URL (isi file yang dipilih pengguna): cukup ambil isinya.
   if (url && url.startsWith('data:')) return url.slice(url.indexOf(',') + 1);
   // Alamat blob: hanya bisa dibaca oleh halaman yang membuatnya (misalnya MANGA Plus).
   // Langsung tolak tanpa fetch, supaya Chrome tidak mencatatnya sebagai error extension;
@@ -280,10 +280,10 @@ async function gambarQr(orderId) {
   }
 }
 
-// Asal permintaan ditentukan dari alamat pengirim, bukan dari isi pesan: halaman viewer.html
-// (fitur File Explorer) = 'explorer'. Backend hanya mencatatnya di log.
+// Asal permintaan ditentukan dari alamat pengirim, bukan dari isi pesan: halaman unggah.html
+// (UC-06 Menerjemahkan Gambar Unggahan) = 'upload'. Backend hanya mencatatnya di log.
 function asalPermintaan(sender) {
-  return sender && sender.url && sender.url.startsWith(chrome.runtime.getURL('viewer.html')) ? 'explorer' : 'page';
+  return sender && sender.url && sender.url.startsWith(chrome.runtime.getURL('unggah.html')) ? 'upload' : 'page';
 }
 
 // msg.imageUrl: unduh gambar dari alamatnya.  msg.image: gambar (base64) yang sudah dipotret.

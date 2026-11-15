@@ -17,9 +17,9 @@ function costOf(model) {
   return m.cost;
 }
 
-// Asal permintaan: 'page' = tombol di halaman situs, 'explorer' = gambar dari File Explorer
-// (akan diganti halaman unggah gambar pada tahap berikutnya).
-const SOURCES = ['page', 'explorer'];
+// Asal permintaan: 'page' = tombol di halaman situs, 'upload' = halaman Unggah Gambar (UC-06).
+// Biayanya sama; asal hanya dicatat di log.
+const SOURCES = ['page', 'upload'];
 
 // Dipanggil SEBELUM OCR dan Gemini, supaya permintaan yang pasti ditolak tidak membuang waktu dan biaya API.
 function checkCredit(user, model, { source = 'page' } = {}) {

@@ -217,6 +217,11 @@ async function bukaPaket() {
 
 // ---- Tombol ----
 document.querySelectorAll('.beli').forEach((b) => b.addEventListener('click', bukaPaket));
+// UC-06: halaman unggah dibuka di tab baru karena popup terlalu kecil dan tertutup saat kehilangan fokus.
+$('#btnUnggah').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('unggah.html') });
+  window.close();
+});
 $('#btnKembali').addEventListener('click', async () => {
   // Kembali ke pengaturan, atau ke layar "credit habis" bila saldo masih nol.
   const { session } = await chrome.storage.local.get('session');

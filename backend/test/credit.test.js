@@ -32,9 +32,10 @@ test('kode model lama (std/adv) masih diterima dan diarahkan ke model baru', () 
   assert.strictEqual(checkCredit(akun(10), 'adv'), 1);
 });
 
-test('asal permintaan: halaman dan File Explorer boleh untuk semua akun, lainnya ditolak', () => {
+test('asal permintaan: halaman situs dan halaman unggah boleh untuk semua akun, lainnya ditolak', () => {
   assert.strictEqual(checkCredit(akun(10), 'std', { source: 'page' }), 1);
-  assert.strictEqual(checkCredit(akun(10), 'std', { source: 'explorer' }), 1);
+  assert.strictEqual(checkCredit(akun(10), 'std', { source: 'upload' }), 1);
+  assert.throws(() => checkCredit(akun(10), 'std', { source: 'explorer' }), { code: 'BAD_REQUEST' }); // File Explorer sudah dihapus
   assert.throws(() => checkCredit(akun(10), 'std', { source: 'lain' }), { code: 'BAD_REQUEST', status: 400 });
 });
 

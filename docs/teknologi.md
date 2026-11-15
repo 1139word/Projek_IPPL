@@ -12,7 +12,7 @@ Ringkasan keputusan teknologi proyek. Dokumen SRS, SDD, dan catatan lain disimpa
 | Terjemahan | Empat model: Gemini 3.1 Flash-Lite `gemini-3.1-flash-lite` (1 credit), DeepSeek V4.1 Flash `deepseek-flash` (1 credit), Gemini 3.5 Flash `gemini-3.5-flash` (1 credit), Gemini 3.1 Pro `gemini-3.1-pro-preview` (2 credit); semua akun boleh memakai semuanya | Daftar dan biaya di `backend/lib/models.js`; nama model API bisa diganti di `backend/.env` |
 | Database | MySQL | Keputusan proyek |
 | Pembayaran | QRIS lewat Midtrans | Keputusan proyek |
-| File Explorer | Native Messaging (menu klik kanan, untuk semua akun; akan diganti halaman unggah gambar) | Disetujui di rancangan |
+| Unggah gambar | Halaman extension `unggah.html` di tab baru (pilih banyak gambar atau satu folder, untuk semua akun); file dibaca browser lewat `<input type="file">`, tanpa Native Messaging | Menggantikan File Explorer (revisi setelah presentasi): tidak perlu memasang apa pun di Windows |
 
 ## Alur pengaturan dan pembayaran
 
@@ -54,4 +54,5 @@ Jawaban gagal: `{ "code": "NO_TEXT" | "OCR_DOWN" | "BAD_IMAGE" | "BAD_API_KEY" |
 2. Akun dan credit mingguan
 3. Tab Beli Credit dan model Advanced
 4. Pembayaran QRIS (Midtrans)
-5. File Explorer
+5. File Explorer (sudah diganti halaman Unggah Gambar)
+6. Sistem credit: paket credit, empat model, halaman Unggah Gambar

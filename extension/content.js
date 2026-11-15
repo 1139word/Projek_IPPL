@@ -2,6 +2,12 @@
   // Iframe kecil (iklan, widget) bukan halaman komik: jangan dipasangi tombol.
   if (window !== window.top && (innerWidth < 500 || innerHeight < 400)) return;
   const MIN_SIZE = 250; // abaikan gambar kecil (ikon, avatar, banner iklan)
+  // Halaman Unggah Gambar milik extension (unggah.html, UC-06). File ini dimuat di sana untuk
+  // menggambar kotak terjemahan, tetapi alurnya berbeda dari halaman situs:
+  //  - tombol 文A saat hover tidak muncul (gambar diterjemahkan otomatis oleh unggah.js),
+  //  - hasil atau kegagalan dilaporkan ke unggah.js lewat event 'it-hasil' (pesan gagal tidak hilang sendiri),
+  //  - tidak ada tombol "Tutup hasil" dan hasil tidak disimpan di cache.
+  const HALAMAN_UNGGAH = location.protocol === 'chrome-extension:' && location.pathname === '/unggah.html';
   let fab = null;
   let fabOn = false;
   let current = null; // gambar yang sedang di-hover
@@ -376,7 +382,7 @@
   let lastPt = null;
   function refreshTarget() {
     moving = false;
-    if (!enabled) { hideFab(); return; }
+    if (!enabled || HALAMAN_UNGGAH) { hideFab(); return; }
     if (!lastPt) return;
     const t = findTarget(lastPt.x, lastPt.y);
     drawDebug(t);
@@ -462,7 +468,8 @@
     close.type = 'button';
     close.textContent = 'Tutup hasil';
     close.addEventListener('click', () => { dismissed.add(img); removeSession(s); });
-    s.bar.append(toggle, close);
+    // Di halaman unggah tidak ada tombol 文A untuk menerjemahkan lagi, jadi hasil tidak bisa ditutup.
+    if (HALAMAN_UNGGAH) s.bar.append(toggle); else s.bar.append(toggle, close);
     document.body.appendChild(s.bar);
     sessions.set(img, s);
     start();
@@ -532,7 +539,8 @@
     if (ada) { if (needsMore(img) && window === window.top) runMore(img, ada); return; }
     dismissed.delete(img);
     hideFab();
-    const key = img.tagName === 'CANVAS' ? null : srcOf(img);
+    // Gambar unggahan beralamat data: (isi file, bisa belasan MB), jadi tidak dijadikan kunci cache.
+    const key = img.tagName === 'CANVAS' || HALAMAN_UNGGAH ? null : srcOf(img);
     const hit = key && cache.get(key);
     if (hit && hit.sk === settingsKey()) { showResult(img, hit.regions, hit.covered); return; } // sudah pernah diterjemahkan: gratis
     // Indikator proses (FR-14): lingkaran berputar dengan detik berjalan.
@@ -567,6 +575,16 @@
     }
     stopLoader(s.load); s.load = null;
     removeSession(s);
+    if (HALAMAN_UNGGAH) {
+      // Laporkan ke unggah.js. Bila gagal, unggah.js menampilkan pesan yang menetap dan tombol "Terjemahkan ulang".
+      const ok = Boolean(res && res.ok);
+      if (ok) showResult(img, res.regions, covered);
+      img.dispatchEvent(new CustomEvent('it-hasil', {
+        bubbles: true,
+        detail: ok ? { ok, jumlah: res.regions.length } : { ok, code: (res && res.code) || 'ERROR', message: errText(res) }
+      }));
+      return;
+    }
     if (res && res.ok) {
       if (key) cache.set(key, { regions: res.regions, sk, covered });
       showResult(img, res.regions, covered);
@@ -599,8 +617,8 @@
     clearTimeout(restoreTimer);
     restoreTimer = setTimeout(restoreVisible, 200);
   }, true);
-  // Halaman viewer.html (fitur File Explorer) meminta gambarnya langsung diterjemahkan
-  // tanpa menunggu pengguna menekan tombol. Event ini hanya dikirim oleh viewer.js.
+  // Halaman unggah.html meminta gambarnya langsung diterjemahkan tanpa menunggu pengguna
+  // menekan tombol. Event ini hanya dikirim oleh unggah.js.
   document.addEventListener('it-auto', (e) => {
     if (e.target && e.target.tagName === 'IMG') run(e.target);
   });

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unggah Gambar · Image Translator</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="content.css">
+<link rel="stylesheet" href="unggah.css">
+</head>
+<body class="tab">
+<!-- UC-06 Menerjemahkan Gambar Unggahan. Dibuka dari tombol "Unggah gambar" di popup.
+     Gambar yang dipilih ditampilkan berurutan dari atas ke bawah dan diterjemahkan otomatis satu per satu.
+     Semua gambar dan hasilnya hanya ada di memori tab ini: hilang saat tab ditutup atau dimuat ulang. -->
+<main class="halaman">
+  <header class="hd">
+    <span class="lg">T</span>Image Translator
+    <span class="info-akun" id="infoAkun" aria-live="polite"></span>
+  </header>
+
+  <div>
+    <h2 class="judul">Unggah gambar</h2>
+    <div class="note" id="ringkas" aria-live="polite">Pilih gambar komik dari komputer Anda. Gambar langsung diterjemahkan satu per satu.</div>
+  </div>
+
+  <div class="peringatan" id="belumMasuk" role="alert" hidden>
+    Anda belum masuk. Klik ikon Image Translator di toolbar, lalu "Masuk dengan Google". Setelah itu gambar yang gagal bisa diterjemahkan ulang.
+  </div>
+
+  <!-- Daftar gambar, tersusun vertikal seperti membaca komik -->
+  <div class="daftar" id="daftar"></div>
+
+  <!-- File yang ditolak sebelum dikirim (bukan gambar atau lebih dari 15 MB) -->
+  <div class="peringatan" id="ditolak" role="alert" hidden>
+    <b id="ditolakJudul"></b>
+    <ul id="ditolakList"></ul>
+    <button class="link" type="button" id="ditolakTutup">Tutup pesan ini</button>
+  </div>
+
+  <!-- Pemilih file. Saat daftar masih kosong letaknya di atas; setelah ada gambar, letaknya di bawah
+       gambar terakhir sehingga gambar baru bertambah di bawah. -->
+  <section class="pilih" id="pilih">
+    <div class="pilih-teks" id="pilihTeks">Seret gambar ke sini, atau pilih dari komputer</div>
+    <div class="pilih-tombol">
+      <button class="btn" type="button" id="btnGambar">Pilih gambar</button>
+      <button class="btn ghost" type="button" id="btnFolder">Pilih folder</button>
+    </div>
+    <div class="note">JPG, PNG, WEBP, BMP, atau GIF. Maksimal 15 MB per gambar. Setiap gambar yang berhasil diterjemahkan memotong credit sesuai model yang dipilih di popup.</div>
+    <input type="file" id="inGambar" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,image/jpeg,image/png,image/webp,image/bmp,image/gif" multiple hidden>
+    <input type="file" id="inFolder" webkitdirectory hidden>
+  </section>
+</main>
+<script src="content.js"></script>
+<script src="unggah.js"></script>
+</body>
+</html>

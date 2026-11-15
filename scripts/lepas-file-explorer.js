@@ -1,5 +1,7 @@
-// Melepas fitur File Explorer: hapus menu klik kanan dan pendaftaran native host dari registry,
-// lalu hapus folder explorer-host/terpasang. Jalankan: node scripts/lepas-file-explorer.js
+// Membersihkan sisa fitur File Explorer lama (fitur itu sudah diganti halaman Unggah Gambar).
+// Hanya perlu dijalankan sekali di komputer yang dulu pernah menjalankan pasang-file-explorer.js:
+// menghapus menu klik kanan dan pendaftaran native host dari registry, lalu folder explorer-host.
+// Jalankan: node scripts/lepas-file-explorer.js
 
 const fs = require('fs');
 const path = require('path');
@@ -23,5 +25,6 @@ for (const k of KUNCI) {
     console.log('Tidak ada:', k);
   }
 }
-fs.rmSync(path.resolve(__dirname, '..', 'explorer-host', 'terpasang'), { recursive: true, force: true });
-console.log('Fitur File Explorer dilepas.');
+// Folder explorer-host sudah tidak ada di repo; yang tersisa hanya salinan terpasang (diabaikan Git).
+fs.rmSync(path.resolve(__dirname, '..', 'explorer-host'), { recursive: true, force: true });
+console.log('Sisa fitur File Explorer sudah dibersihkan.');
