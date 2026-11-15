@@ -29,6 +29,8 @@ const $ = (sel, root = document) => root.querySelector(sel);
 // ---- Pindah tampilan (login / utama / credit habis / paket credit) ----
 function show(view) {
   for (const id of ['vLogin', 'vMain', 'vHabis', 'vPaket']) $('#' + id).hidden = id !== view;
+  // Tombol "Beli credit" di kartu saldo hanya di layar utama; layar lain sudah punya tombolnya sendiri.
+  $('#btnBeliSaldo').hidden = view !== 'vMain';
   $('#msg').textContent = '';
 }
 
@@ -38,7 +40,7 @@ function show(view) {
 function renderCredit(c) {
   if (!c) return;
   $('#creditText').textContent = `${c.left} credit`;
-  $('#creditText').classList.toggle('empty', c.left === 0);
+  $('#creditText').classList.toggle('zero', c.left === 0);
   if (c.left === 0) { if (!$('#vMain').hidden) show('vHabis'); }
   else if (!$('#vHabis').hidden) show('vMain'); // baru saja membeli credit
 }
@@ -182,7 +184,7 @@ function kartuPaket(p) {
   const nama = document.createElement('b');
   nama.textContent = `${p.credits} credit`;
   const harga = document.createElement('div');
-  harga.className = 'note';
+  harga.className = 'pr';
   harga.textContent = rupiah(p.price);
   kiri.append(nama, harga);
   const beli = document.createElement('button');
@@ -229,6 +231,17 @@ $('#btnKembali').addEventListener('click', async () => {
   renderCredit(session && session.user && session.user.credit);
 });
 $('#btnTutup').addEventListener('click', () => window.close());
+
+// ---- Tema siang/malam (FR-36) ----
+// tema.js sudah memasang tema tersimpan sebelum popup digambar. Tombol ini hanya mengganti dan
+// memperbarui keterangannya. Tab Beli Credit dan Unggah yang terbuka ikut berganti (event 'storage').
+function renderTema() {
+  const ke = temaIT.sekarang() === 'siang' ? 'malam' : 'siang';
+  $('#btnTema').title = `Ganti ke tema ${ke}`;
+  $('#btnTema').setAttribute('aria-label', `Ganti ke tema ${ke}`);
+}
+$('#btnTema').addEventListener('click', () => { temaIT.ganti(); renderTema(); });
+renderTema();
 
 // ---- Muat data awal ----
 // Data tersimpan ditampilkan dulu supaya cepat, lalu background meminta data terbaru (saldo credit) ke server.

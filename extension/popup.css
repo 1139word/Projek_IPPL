@@ -1,77 +1,127 @@
-/* Warna dan bentuk mengikuti komponen UI di rancangan (ui.css). Ubah di sini, semua ikut berubah. */
+/* Tampilan Image Translator (tahap 5, mengikuti rancangan ui.css 11 Nov 2026).
+   Semua warna ada di bagian token di bawah. Ubah di sini, popup, halaman Beli Credit, dan halaman Unggah ikut berubah.
+   Tema malam = :root (bawaan). Tema siang = kelas "day" pada <html>, dipasang oleh tema.js. */
+
+/* Huruf Nunito disimpan di dalam extension (fonts/), jadi tidak mengambil dari internet. Lisensi: fonts/OFL.txt */
+@font-face{font-family:"Nunito";font-style:normal;font-weight:200 1000;font-display:swap;src:url(fonts/nunito.woff2) format("woff2")}
+
 :root{
-  --primary:#0a6fc2;--primary-dark:#0a5a9e;--primary-soft:#e3f0fb;--on-primary:#fff;
-  --text:#1a1a1f;--muted:#5f6370;--bg:#f7f7f7;--surface:#fff;--hover:#f1f4f8;
-  --border:#c9ccd3;--line:#d9d9dd;--line-soft:#ececef;--scroll:#b8bcc6;--off:#e6e6e8;
-  --danger:#c62828;--success:#1b7f3b;--warn:#f5b301;--on-warn:#3a2a00;
-  --avatar-bg:#d5dae3;--avatar-fg:#8a93a3;
-  --font:Inter,"Segoe UI",system-ui,sans-serif;
+  /* Tema malam: biru tua bergradasi dengan bintik bintang */
+  --primary:#4470ea;--primary-dark:#b3c7ff;--primary-soft:#263070;--on-primary:#fff;
+  --text:#f4f6ff;--muted:#a3aad6;
+  --grad:linear-gradient(180deg,#272c78 0%,#161a50 38%,#0b0c2a 100%);
+  --stars:radial-gradient(circle at 8% 11%,rgba(255,255,255,.55) 0 .8px,transparent 1.4px),radial-gradient(circle at 27% 34%,rgba(255,255,255,.35) 0 .7px,transparent 1.3px),radial-gradient(circle at 46% 7%,rgba(255,255,255,.4) 0 .6px,transparent 1.2px),radial-gradient(circle at 63% 52%,rgba(255,255,255,.3) 0 .7px,transparent 1.3px),radial-gradient(circle at 81% 16%,rgba(255,255,255,.5) 0 .8px,transparent 1.4px),radial-gradient(circle at 92% 71%,rgba(255,255,255,.35) 0 .7px,transparent 1.3px),radial-gradient(circle at 15% 78%,rgba(255,255,255,.3) 0 .6px,transparent 1.2px),radial-gradient(circle at 38% 91%,rgba(255,255,255,.4) 0 .7px,transparent 1.3px),radial-gradient(circle at 71% 86%,rgba(255,255,255,.3) 0 .6px,transparent 1.2px),radial-gradient(circle at 55% 29%,rgba(255,255,255,.25) 0 .6px,transparent 1.2px);
+  --bg-solid:#161a50;--ink:#0b0c2a;--overlay:#1b1f52;
+  --surface:rgba(255,255,255,.06);--hover:rgba(255,255,255,.10);
+  --border:rgba(255,255,255,.20);--line:rgba(255,255,255,.12);--line-soft:rgba(255,255,255,.08);--scroll:#5b63a8;--off:rgba(255,255,255,.12);
+  --danger:#ff8f8f;--success:#6fe0a8;--warn:#ffb547;--on-warn:#2a1c00;
+  --danger-soft:rgba(255,143,143,.14);--success-soft:rgba(111,224,168,.14);--warn-soft:rgba(255,181,71,.14);
+  --avatar-bg:#343b85;--avatar-fg:#c5cdf5;
+  --logo-bg:#5b86f5;--logo-fg:#fff;
+  --radius:12px;--radius-lg:18px;
+  --font:Nunito,"Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
 }
+/* Tema siang: biru cerah bergradasi, bintik samar, tanpa awan. Kontras teks putih di atas kartu >= 4,7:1 */
+.day{
+  --primary:#fff;--primary-dark:#fff;--primary-soft:rgba(255,255,255,.22);--on-primary:#1a4aa8;
+  --text:#fff;--muted:#f4f7ff;
+  --grad:linear-gradient(180deg,#1e5ac8 0%,#1a4fb6 40%,#153d98 100%);
+  --bg-solid:#1a4fb6;--ink:#143a8c;--overlay:#2259c4;
+  --surface:rgba(255,255,255,.10);--hover:rgba(255,255,255,.18);
+  --border:rgba(255,255,255,.45);--line:rgba(255,255,255,.30);--line-soft:rgba(255,255,255,.20);--scroll:#a9c6f7;--off:rgba(255,255,255,.22);
+  --danger:#fff0f0;--success:#d9ffe9;
+  --danger-soft:rgba(170,20,60,.55);--success-soft:rgba(40,200,120,.28);--warn-soft:rgba(255,181,71,.28);
+  --avatar-bg:rgba(255,255,255,.30);--avatar-fg:#fff;
+  --logo-bg:#fff;--logo-fg:#1e5ac8;
+}
+
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);font-family:var(--font);color:var(--text)}
+html{background:var(--bg-solid)}
+body{margin:0;min-height:100vh;background:var(--stars),var(--grad);background-color:var(--bg-solid);font-family:var(--font);color:var(--text)}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--primary-dark);outline-offset:2px}
 .pop{width:316px;padding:16px;display:flex;flex-direction:column;gap:12px;font-size:13px;line-height:1.4}
 .view{display:flex;flex-direction:column;gap:12px}
 .view[hidden]{display:none}
-.hd{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
-.lg{width:24px;height:24px;border-radius:6px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+
+/* Header: logo, nama, tombol tema, foto profil */
+.hd{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+.lg{width:24px;height:24px;flex:none;display:block}
+.thm{margin-left:auto;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);display:grid;place-items:center;padding:0;flex:none;cursor:pointer}
+.thm:hover{background:var(--hover)}
+.thm svg{display:block}
+.thm .ikon-siang,.day .thm .ikon-malam{display:none}
+.day .thm .ikon-siang{display:block}
 .av{margin-left:auto;width:28px;height:28px;border-radius:50%;background:var(--avatar-bg);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none}
+.thm+.av{margin-left:0}
 .av svg{display:block}
 .av img{width:100%;height:100%;object-fit:cover}
 .email{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.link{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--primary);cursor:pointer;flex:none}
+.link{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;color:var(--primary-dark);cursor:pointer;flex:none}
 .link:hover{text-decoration:underline}
-h2{margin:0;font-size:18px;font-weight:700}
+h2{margin:0;font-size:19px;line-height:1.3;font-weight:800}
 .lbl{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
-.lbl.strong{color:var(--text)}
-.lbl.strong.empty{color:var(--danger)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
-.bar i{display:block;height:100%;width:0;background:var(--primary);transition:width .3s}
-.bar.full i{background:var(--danger)}
+
+/* Pilihan (dropdown) */
 .wrap{position:relative}
-.sel{width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font:inherit;color:var(--text);text-align:left;cursor:pointer}
-.sel:hover,.sel.open{border-color:var(--primary)}
-.dd{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:8;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);max-height:180px;overflow-y:auto}
+.sel{width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font:inherit;color:var(--text);text-align:left;cursor:pointer}
+.sel:hover,.sel.open{border-color:var(--primary-dark)}
+.dd{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:8;background:var(--overlay);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.3);max-height:180px;overflow-y:auto;padding:4px 0}
 .dd[hidden]{display:none}
 .dd::-webkit-scrollbar{width:8px}
 .dd::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:4px}
 .ddi{width:100%;height:36px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 12px;background:none;border:0;font:inherit;color:var(--text);text-align:left;cursor:pointer;flex:none}
 .ddi:hover{background:var(--hover)}
-.ddi.on{background:var(--primary-soft);font-weight:600;color:var(--primary-dark)}
-.bdg{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;background:var(--warn);color:var(--on-warn);font-size:10px;font-weight:700}
+.ddi.on{background:var(--primary-soft);font-weight:700;color:var(--primary-dark)}
 .sub{font-size:12px;color:var(--muted);font-weight:400}
-.btn{display:flex;align-items:center;justify-content:center;gap:6px;height:40px;width:100%;border-radius:8px;background:var(--primary);color:var(--on-primary);font:inherit;font-weight:600;border:1px solid var(--primary);cursor:pointer}
-.btn:hover{background:var(--primary-dark)}
-.btn:disabled{opacity:.6;cursor:default}
-.btn.ghost{background:var(--surface);color:var(--primary)}
-.btn.ghost:hover{background:var(--primary-soft)}
-.ico{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:28px;font-weight:700}
+
+/* Tombol: bulat penuh. ghost = latar transparan */
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;height:40px;width:100%;border-radius:999px;background:var(--primary);color:var(--on-primary);font:inherit;font-weight:700;border:1px solid var(--primary);cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.day .btn:hover{filter:brightness(.95)}
+.btn:disabled{opacity:.6;cursor:default;filter:none}
+.btn.ghost{background:var(--surface);color:var(--primary-dark);border-color:var(--border)}
+.btn.ghost:hover{background:var(--hover);filter:none}
+.btn.sm,.btn.mini{width:auto;height:34px;padding:0 14px;flex:none;font-size:12px}
+
+/* Ikon bulat besar di layar pesan */
+.ico{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:0 auto;font-size:28px;font-weight:800}
 .ico.amber{background:var(--warn);color:var(--on-warn)}
-.ico.gray{background:#6b6f7a;color:var(--on-primary)}
+.ico.gray{background:var(--off);color:var(--text)}
+.ico.hijau{background:var(--success);color:var(--ink)}
+
 .note{font-size:12px;color:var(--muted)}
 .note:empty,.saved:empty{display:none}
 .c{text-align:center}
 .info{color:var(--primary-dark)}
-.saved{color:var(--success);font-weight:600;font-size:12px;text-align:center}
+.saved{color:var(--success);font-weight:700;font-size:12px;text-align:center}
 .tos:empty{display:none}
 .tos{color:var(--muted);font-size:11px;text-align:center;line-height:1.5;border-top:1px solid var(--line-soft);padding-top:8px}
-.tgr{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+
+/* Sakelar tombol terjemah. Kenop selalu putih pekat agar terlihat di kedua tema */
+.tgr{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:8px 10px}
 .tgr .tt{display:flex;flex-direction:column;gap:1px;min-width:0}
-.tgr b{font-size:13px;font-weight:600}
+.tgr b{font-size:13px;font-weight:700}
 .tgr .note{font-size:11px}
-.tg{position:relative;width:44px;height:26px;border-radius:13px;background:var(--border);border:0;padding:0;flex:none;cursor:pointer}
-.tg::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
-.tg.on{background:var(--primary)}
+.tg{position:relative;width:44px;height:26px;border-radius:13px;background:var(--border);border:0;padding:0;flex:none;cursor:pointer;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.38)}
+.tg::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.45);transition:left .15s}
+.tg.on{background:var(--primary);box-shadow:none}
+.day .tg.on::after{background:#1e5ac8}
 .tg.on::after{left:21px}
-.row.start{justify-content:flex-start}
-.row.start .bdg{margin-left:0}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.card.hi{border:2px solid var(--primary)}
-.price{font-size:20px;font-weight:700;margin:2px 0}
-.price .note{font-weight:400}
-.fit{margin:0;padding-left:18px;font-size:12px;color:var(--muted)}
+
+/* Saldo credit */
+.bal{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:8px 10px}
+.bal .tt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bal .lbl{margin:0}
+.bal .n{font-size:19px;font-weight:800}
+.bal .n.zero{color:var(--danger)}
+
+/* Kartu dan paket credit */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px;display:flex;flex-direction:column;gap:4px}
 .pakets{display:flex;flex-direction:column;gap:8px}
 .card.paket{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
 .card.paket b{font-size:15px}
-.btn.mini{height:32px;width:auto;padding:0 16px;font-size:12px;flex:none}
+.card.paket .pr{font-size:19px;font-weight:800;color:var(--text)}

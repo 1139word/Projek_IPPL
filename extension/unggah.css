@@ -1,19 +1,19 @@
-/* Halaman Unggah Gambar (tab). Warna dan komponen dasar dari popup.css; kotak terjemahan dari content.css. */
-body.tab{min-height:100vh}
+/* Halaman Unggah Gambar (tab). Warna, tema siang/malam, dan komponen dasar dari popup.css; kotak terjemahan dari content.css. */
+body.tab{min-height:100vh;background-attachment:fixed}
 .halaman{max-width:900px;margin:0 auto;padding:32px 24px 64px;display:flex;flex-direction:column;gap:20px;font-size:14px;line-height:1.45}
 .judul{font-size:24px}
 .info-akun{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted);text-align:right}
 .info-akun b{color:var(--text);font-weight:600}
 
-.peringatan{background:#fff8e1;border:1px solid var(--warn);border-radius:10px;padding:12px 16px;color:var(--on-warn);font-size:13px}
+.peringatan{background:var(--warn-soft);border:1px solid var(--warn);border-radius:var(--radius);padding:12px 16px;color:var(--text);font-size:13px}
 .peringatan ul{margin:6px 0;padding-left:18px}
 .peringatan li{overflow-wrap:anywhere}
 
-.pilih{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:32px 24px;border:2px dashed var(--border);border-radius:12px;background:var(--surface)}
-.pilih.seret{border-color:var(--primary);background:var(--primary-soft)}
-.pilih-teks{font-size:16px;font-weight:600}
+.pilih{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:32px 24px;border:2px dashed var(--border);border-radius:var(--radius-lg);background:var(--surface)}
+.pilih.seret{border-color:var(--primary-dark);background:var(--primary-soft)}
+.pilih-teks{font-size:16px;font-weight:800}
 .pilih-tombol{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-.pilih-tombol .btn{width:auto;padding:0 24px}
+.pilih-tombol .btn{width:180px;padding:0 24px}
 .pilih .note{max-width:520px}
 
 .daftar{display:flex;flex-direction:column;gap:24px}
@@ -21,13 +21,13 @@ body.tab{min-height:100vh}
 .kartu{margin:0;display:flex;flex-direction:column;gap:8px}
 .kartu-atas{display:flex;align-items:center;gap:10px;font-size:13px}
 .nomor{flex:none;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--off);display:grid;place-items:center;font-weight:700;font-size:12px}
-.nama{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.status{margin-left:auto;flex:none;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;background:var(--off);color:var(--muted)}
+.nama{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.status{margin-left:auto;flex:none;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:700;background:var(--off);color:var(--muted)}
 .status.proses{background:var(--primary-soft);color:var(--primary-dark)}
-.status.selesai{background:#e3f4e8;color:var(--success)}
-.status.gagal{background:#fdecea;color:var(--danger)}
+.status.selesai{background:var(--success-soft);color:var(--success)}
+.status.gagal{background:var(--danger-soft);color:var(--danger)}
 /* Pesan gagal menetap sampai gambar diterjemahkan ulang (tidak hilang otomatis). */
-.gagal-kotak{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fdecea;border:1px solid var(--danger);border-radius:10px;padding:10px 14px;color:#7a1c1c;font-size:13px}
+.gagal-kotak{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--danger-soft);border:1px solid var(--danger);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:13px}
 .gagal-kotak .btn{width:auto;height:34px;padding:0 16px;font-size:13px;flex:none}
-.gambar-wadah{display:flex;justify-content:center;background:#2b2b30;border-radius:10px;padding:12px;min-height:80px}
+.gambar-wadah{display:flex;justify-content:center;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:var(--radius-lg);padding:12px;min-height:80px}
 .gambar-wadah img{display:block;max-width:100%;height:auto;box-shadow:0 2px 12px rgba(0,0,0,.4)}

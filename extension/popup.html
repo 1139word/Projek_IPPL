@@ -3,12 +3,18 @@
 <head>
 <meta charset="utf-8">
 <title>Image Translator</title>
+<script src="tema.js"></script>
 <link rel="stylesheet" href="popup.css">
 </head>
 <body>
 <main class="pop">
   <header class="hd">
-    <span class="lg">T</span>Image Translator
+    <!-- Logo B: balon kata berisi 文 dan A --><svg class="lg" width="24" height="24" viewBox="0 0 30 30" aria-hidden="true"><path d="M6 4h18a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-9l-6 5v-5H6a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" fill="var(--logo-bg)"/><path d="M7 9h7M10.5 7.5V9M8 9c.6 3 2.6 5.2 5.5 6.5M13 9c-.6 3-2.4 5.2-5.5 6.5" fill="none" stroke="var(--logo-fg)" stroke-width="1.6" stroke-linecap="round"/><path d="M16.5 17l3-8 3 8M17.6 14.4h3.8" fill="none" stroke="var(--logo-fg)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Image Translator
+    <!-- Tema siang/malam (FR-36). Ikonnya mengikuti tema yang sedang aktif: bulan = malam, matahari = siang. -->
+    <button class="thm" type="button" id="btnTema" aria-label="Ganti ke tema siang" title="Ganti ke tema siang">
+      <svg class="ikon-malam" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      <svg class="ikon-siang" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+    </button>
     <!-- Foto profil Google. Ikon umum dipakai selama belum login. -->
     <span class="av" id="av" role="img" aria-label="Belum login" title="Belum login">
       <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="11" r="5" fill="var(--avatar-fg)"/><path d="M4 27c1-6.5 5-8.5 10-8.5s9 2 10 8.5z" fill="var(--avatar-fg)"/></svg>
@@ -36,8 +42,9 @@
   </section>
 
   <!-- Saldo credit (UC-02): tampil di atas setelah login. Tidak ada kuota dan tidak ada reset. -->
-  <section id="creditBox" hidden>
-    <div class="row"><span class="lbl">Saldo credit</span><span class="lbl strong" id="creditText">…</span></div>
+  <section class="bal" id="creditBox" hidden>
+    <span class="tt"><span class="lbl">Saldo credit</span><span class="n" id="creditText">…</span></span>
+    <button class="btn sm beli" type="button" id="btnBeliSaldo">Beli credit</button>
   </section>
 
   <!-- Tampilan utama: pengaturan -->
@@ -59,8 +66,8 @@
     </div>
     <div class="saved" id="saved" aria-live="polite"></div>
     <!-- UC-06: membuka halaman Unggah Gambar di tab baru -->
-    <button class="btn" type="button" id="btnUnggah">Unggah gambar</button>
-    <button class="btn ghost beli" type="button">Beli credit</button>
+    <button class="btn ghost" type="button" id="btnUnggah">Unggah gambar</button>
+    <div class="note c">Credit tidak punya masa berlaku</div>
   </section>
 
   <!-- Credit habis -->

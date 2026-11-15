@@ -74,7 +74,7 @@ npm start
 ```
 Tunggu sampai muncul `Backend siap di http://localhost:3000`.
 
-**Chrome:** buka `chrome://extensions`, klik ikon muat ulang (↻) pada Image Translator. Klik ikon extension di toolbar, lalu **Masuk dengan Google** (cukup sekali; sesi berlaku 30 hari). Setelah itu buka halaman komik dan klik tombol terjemah pada gambar. Sakelar **Tombol terjemah di halaman** di popup menyembunyikan tombol saat tidak sedang membaca komik.
+**Chrome:** buka `chrome://extensions`, klik ikon muat ulang (↻) pada Image Translator. Klik ikon extension di toolbar, lalu **Masuk dengan Google** (cukup sekali; sesi berlaku 30 hari). Setelah itu buka halaman komik dan klik tombol terjemah pada gambar. Sakelar **Tombol terjemah di halaman** di popup menyembunyikan tombol saat tidak sedang membaca komik. Tombol bulan/matahari di samping foto profil mengganti tema malam dan siang; pilihan ini tersimpan dan ikut berlaku di halaman Beli Credit dan Unggah Gambar.
 
 ## Membaca pesan di terminal backend
 

@@ -13,6 +13,7 @@ Ringkasan keputusan teknologi proyek. Dokumen SRS, SDD, dan catatan lain disimpa
 | Database | MySQL | Keputusan proyek |
 | Pembayaran | QRIS lewat Midtrans | Keputusan proyek |
 | Unggah gambar | Halaman extension `unggah.html` di tab baru (pilih banyak gambar atau satu folder, untuk semua akun); file dibaca browser lewat `<input type="file">`, tanpa Native Messaging | Menggantikan File Explorer (revisi setelah presentasi): tidak perlu memasang apa pun di Windows |
+| Tampilan | CSS biasa dengan variabel warna di `extension/popup.css` (tema malam di `:root`, tema siang di `.day`); huruf Nunito disimpan di `extension/fonts/`; pilihan tema di `localStorage` extension lewat `extension/tema.js` | Satu tempat untuk semua warna; tema berganti di popup dan tab yang terbuka tanpa dimuat ulang; tidak mengambil huruf dari internet |
 
 ## Alur pengaturan dan pembayaran
 
