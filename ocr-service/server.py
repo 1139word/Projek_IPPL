@@ -71,6 +71,7 @@ SOLIDITY_MIN = 0.8   # luas area / luas selubung cembungnya; balon oval/awan ~0.
 ISI_MIN = 0.55       # luas area / luas kotak pembatasnya; oval ~0.78
 TEKS_RASIO_MAKS = 8  # luas balon / luas semua teks di dalamnya; lebih dari ini biasanya langit/lantai putih
 GARIS_MIN = 0.15     # bagian piksel di tepi luar area yang kontras; balon punya garis tepi (~0.17-0.5)
+BUKA_HITAM = 15      # lebar (px) ekor/garis gelap yang diputus dari balon hitam sebelum bentuknya dinilai
 
 
 def _cari(gray, lines, mask, tepi_kontras):
@@ -119,7 +120,12 @@ def cari_balon(img, lines):
     """Tambahkan "bubble": [x, y, lebar, tinggi] (atau None) dan "dark" (balon hitam) pada setiap baris."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     putih = _cari(gray, lines, (gray >= PUTIH).astype(np.uint8), lambda abu: abu < 120)
-    hitam = _cari(gray, lines, (gray <= HITAM).astype(np.uint8), lambda abu: abu > 150)
+    # Ekor balon hitam sering menyambung ke garis gelap lain (badan tokoh, arsiran), sehingga balon + ekor + garis
+    # terhitung satu area yang tidak berbentuk oval dan ditolak. Opening (kikis lalu tebalkan lagi) memutus bagian
+    # yang lebih tipis dari BUKA_HITAM piksel; bentuk balonnya sendiri tetap utuh.
+    pekat = cv2.morphologyEx((gray <= HITAM).astype(np.uint8), cv2.MORPH_OPEN,
+                             cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (BUKA_HITAM, BUKA_HITAM)))
+    hitam = _cari(gray, lines, pekat, lambda abu: abu > 150)
     for ln, bp, bh in zip(lines, putih, hitam):
         # Balon hitam hanya bila latar kotak teksnya memang gelap (median kecerahan rendah). Tanpa cek ini,
         # huruf hitam biasa yang menempel ke garis/arsiran gelap bisa dianggap "balon hitam".
