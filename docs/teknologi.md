@@ -8,7 +8,7 @@ Ringkasan keputusan teknologi proyek. Dokumen SRS, SDD, dan catatan lain disimpa
 |---|---|---|
 | Extension | Chrome Manifest V3, JavaScript biasa | Target hanya Google Chrome; tanpa framework agar mudah dipahami |
 | Backend | Node.js + Express | Satu bahasa dengan extension; menangani akun, credit, pembayaran, dan pemanggilan OCR serta Gemini |
-| OCR | RapidOCR (model PaddleOCR versi ONNX) sebagai layanan Python kecil dipanggil backend | Sementara untuk UTS karena mudah dipasang di Windows; diganti PaddleOCR penuh setelah UTS (validasi teknologi, NFR-17) |
+| OCR | RapidOCR (model PaddleOCR PP-OCRv6 format ONNX) sebagai layanan Python kecil dipanggil backend | Pilihan tetap: mudah dipasang di Windows dan cepat. PaddleOCR penuh sudah diuji 20 Nov 2026 pada 15 gambar sampel: lebih lambat (~2 dtk vs ~1,4 dtk per halaman), memakan ~1 GB, dan versinya harus dikunci, sedangkan peningkatan teksnya kecil, sehingga tidak dipakai. NFR-17 (validasi teknologi OCR) dipenuhi lewat uji prototipe tersebut |
 | Terjemahan | Empat model: Gemini 3.1 Flash-Lite `gemini-3.1-flash-lite` (1 credit), DeepSeek V4.1 Flash `deepseek-flash` (1 credit), Gemini 3.5 Flash `gemini-3.5-flash` (1 credit), Gemini 3.1 Pro `gemini-3.1-pro-preview` (2 credit); semua akun boleh memakai semuanya | Daftar dan biaya di `backend/lib/models.js`; nama model API bisa diganti di `backend/.env` |
 | Database | MySQL | Keputusan proyek |
 | Pembayaran | QRIS lewat Midtrans | Keputusan proyek |

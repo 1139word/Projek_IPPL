@@ -21,9 +21,10 @@ const cek = [
   { nama: 'Git',     ver: jalankan('git', ['--version']),            ok: v => minimal(v, 2), wajib: true },
   { nama: 'Node.js', ver: jalankan('node', ['--version']),           ok: v => minimal(v, 22), wajib: true, saran: 'pasang Node.js LTS dari nodejs.org' },
   { nama: 'npm',     ver: jalankan('npm', ['--version']),            ok: v => minimal(v, 10), wajib: true },
-  { nama: 'Python',  ver: jalankan(pythonCmd, ['--version']),        ok: v => minimal(v, 3, 9) && !minimal(v, 3, 14), wajib: true, saran: 'pakai Python 3.10 sampai 3.13 (versi terlalu baru bisa belum didukung PaddlePaddle)' },
+  { nama: 'Python',  ver: jalankan(pythonCmd, ['--version']),        ok: v => minimal(v, 3, 9) && !minimal(v, 3, 14), wajib: true, saran: 'pakai Python 3.10 sampai 3.13' },
   { nama: 'MySQL',   ver: jalankan('mysql', ['--version']),          ok: v => minimal(v, 8, 0), wajib: true, saran: 'pasang MySQL dan tambahkan ke PATH' },
-  { nama: 'PaddleOCR (pip)', ver: jalankan(pythonCmd, ['-m', 'pip', 'show', 'paddleocr']) && 'terpasang 0.0', ok: () => true, wajib: false, saran: 'tahap OCR; boleh dipasang nanti' },
+  { nama: 'rapidocr (pip)', ver: jalankan(pythonCmd, ['-m', 'pip', 'show', 'rapidocr']) && 'terpasang', ok: () => true, wajib: false, saran: 'tahap OCR; pasang lewat ocr-service/requirements.txt' },
+  { nama: 'onnxruntime (pip)', ver: jalankan(pythonCmd, ['-m', 'pip', 'show', 'onnxruntime']) && 'terpasang', ok: () => true, wajib: false, saran: 'tahap OCR; pasang lewat ocr-service/requirements.txt' },
 ];
 
 let gagal = 0;

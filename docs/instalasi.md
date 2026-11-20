@@ -8,11 +8,11 @@ Panduan ini menyiapkan laptop agar kode proyek bisa dijalankan. Tahap 1 (extensi
 | Git | mengambil dan mengirim kode | 2.x | sekarang |
 | Node.js | backend Express | 24 LTS (minimal 22) | tahap backend |
 | MySQL | akun, credit, riwayat bayar | 8.4 LTS atau 9.7 LTS | tahap backend |
-| Python | layanan PaddleOCR | 3.10 sampai 3.13 | tahap OCR |
+| Python | layanan OCR (RapidOCR) | 3.10 sampai 3.13 | tahap OCR |
 | Kunci API Gemini | terjemahan | gratis di Google AI Studio | tahap backend |
 | Akun Midtrans Sandbox | QRIS uji coba | gratis | tahap pembayaran |
 
-Catatan versi: halaman resmi saat dicek (5 Okt 2026) menampilkan Node.js 24 sebagai LTS, MySQL 8.4 dan 9.7 sebagai LTS (ada juga seri "Innovation" yang tidak dipakai di sini), dan PaddleOCR mendukung Python 3.8 ke atas. Rentang Python 3.10 sampai 3.13 adalah pilihan aman kami, karena PaddlePaddle kadang terlambat mendukung Python terbaru.
+Catatan versi: halaman resmi saat dicek (5 Okt 2026) menampilkan Node.js 24 sebagai LTS, MySQL 8.4 dan 9.7 sebagai LTS (ada juga seri "Innovation" yang tidak dipakai di sini). Rentang Python 3.10 sampai 3.13 adalah pilihan aman kami.
 
 ## 1. Git
 1. Unduh dari https://git-scm.com/download/win, pasang dengan pilihan bawaan.
@@ -38,14 +38,14 @@ Catatan versi: halaman resmi saat dicek (5 Okt 2026) menampilkan Node.js 24 seba
 1. Unduh Python 3.12 dari https://www.python.org/downloads/windows/ lalu pasang. **Centang "Add python.exe to PATH".**
 2. Cek: `python --version`
 
-## 5. PaddleOCR (nanti, saat tahap OCR)
-Pakai lingkungan virtual agar tidak bentrok dengan Python lain:
+## 5. OCR (RapidOCR)
+OCR memakai RapidOCR (model PaddleOCR PP-OCRv6 format ONNX). Model sudah ikut terpasang bersama paket pip, jadi tidak perlu unduhan terpisah. Pakai lingkungan virtual agar tidak bentrok dengan Python lain:
 ```
+cd ocr-service
 python -m venv venv
-venv\Scripts\activate
-python -m pip install paddlepaddle paddleocr
+venv\Scripts\python -m pip install -r requirements.txt
 ```
-Jika `paddlepaddle` gagal dipasang, ikuti petunjuk resmi PaddlePaddle (CPU, Windows) di https://www.paddlepaddle.org.cn/en/install/quick. Kami akan menyesuaikan perintahnya bersama saat sampai di tahap ini. Unduhan model pertama kali cukup besar dan butuh internet.
+PaddleOCR penuh (`paddlepaddle` + `paddleocr`) **tidak** dipasang. Sudah diuji 20 Nov 2026: lebih lambat, memakan ~1 GB, dan peningkatan teksnya kecil, jadi tetap memakai RapidOCR (lihat `docs/teknologi.md`).
 
 ## 6. Kunci API Gemini
 1. Buka https://aistudio.google.com/apikey, masuk dengan akun Google, buat API key.
