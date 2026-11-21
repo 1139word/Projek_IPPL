@@ -107,6 +107,23 @@
     return n >= 3;
   }
 
+  // Taruh tombol di bawah navbar situs yang menutupi bagian atas gambar (misalnya Webtoon).
+  // Dicari baris pertama dari atas yang tidak tertutup lapisan pekat; hasil disimpan 250 ms per gambar.
+  const atasCache = new WeakMap();
+  function atasBebas(el, v) {
+    const kini = performance.now();
+    const c = atasCache.get(el);
+    if (c && kini - c.t < 250 && c.vt === v.t) return c.y;
+    const x = v.l + 12 + 17;              // tengah tombol (lebar 34 px)
+    const batas = v.t + (v.b - v.t) / 2;  // cari paling jauh setengah tinggi bagian terlihat
+    let y = v.t;
+    for (let coba = v.t; coba + 46 <= batas; coba += 8) {
+      if (!tertutupDi(el, x, coba + 13) && !tertutupDi(el, x, coba + 45)) { y = coba; break; }
+    }
+    atasCache.set(el, { t: kini, vt: v.t, y });
+    return y;
+  }
+
   // Cari gambar di bawah kursor. elementsFromPoint dipakai agar tetap ketemu walau ada lapisan transparan di atasnya.
   // Yang dipilih hanya gambar paling atas di titik itu: begitu ada lapisan berlatar pekat di atas sebuah
   // gambar, pencarian berhenti, supaya gambar di balik lapisan tersebut tidak ikut diterjemahkan.
@@ -303,7 +320,7 @@
   function layout() {
     if (fabOn && current && (!sessions.has(current) || needsMore(current))) {
       const v = visibleRect(current);
-      if (v.ok) { put(fab, v.l + 12, v.t + 12); fab.classList.add('show'); } else fab.classList.remove('show');
+      if (v.ok) { put(fab, v.l + 12, atasBebas(current, v) + 12); fab.classList.add('show'); } else fab.classList.remove('show');
     } else if (fab) fab.classList.remove('show');
 
     for (const s of [...sessions.values()]) {
@@ -322,7 +339,7 @@
       }
       // Lingkaran proses menggantikan tombol di posisi yang sama (kiri atas bagian gambar yang terlihat).
       if (s.load) {
-        put(s.load, v.l + 12, v.t + 12);
+        put(s.load, v.l + 12, atasBebas(s.img, v) + 12);
         s.load.classList.toggle('hid', !tampak);
       }
       if (s.bar) {
@@ -334,7 +351,7 @@
         const over = lastPt && lastPt.x >= v.l && lastPt.x <= v.r && lastPt.y >= v.t && lastPt.y <= v.b;
         s.bar.classList.toggle('hid', !over);
       }
-      if (s.err) put(s.err, v.l + 12, v.t + 12);
+      if (s.err) put(s.err, v.l + 12, atasBebas(s.img, v) + 12);
       if (s.layer && (s.w !== f.width || s.h !== f.height)) {
         s.w = f.width; s.h = f.height;
         fitText(s.layer);
