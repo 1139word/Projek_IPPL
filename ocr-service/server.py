@@ -8,6 +8,7 @@ PP-OCRv6 small. Model ini membaca Mandarin, Inggris, dan Jepang (termasuk teks v
 dalam satu model, dan sudah ikut terpasang bersama paket pip, jadi tidak perlu unduh terpisah.
 Sebelumnya (rapidocr_onnxruntime 1.x, PP-OCRv4) huruf kana Jepang tidak terbaca (masalah M4).
 Bila suatu saat model diganti lagi, cukup ubah fungsi `baca_teks`; bentuk jawabannya harus tetap sama.
+Permintaan boleh membawa "lang" (bahasa asal); "ko" memakai model pengenal Korea (lihat `mesin`).
 
 Menjalankan:  python server.py
 Alamat:       http://127.0.0.1:5001/ocr   (POST)   dan   /health   (GET)
@@ -20,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
 import numpy as np
-from rapidocr import RapidOCR
+from rapidocr import LangRec, ModelType, OCRVersion, RapidOCR
 
 HOST, PORT = "127.0.0.1", 5001
 MIN_SCORE = 0.5  # hasil OCR dengan keyakinan di bawah ini dibuang (biasanya noise)
@@ -34,6 +35,30 @@ engine = RapidOCR(params={"Global.log_level": "warning", "Global.text_score": SK
 pembaca = RapidOCR(params={"Global.log_level": "warning", "Global.text_score": 0.0,
                            "Global.use_det": False, "Global.use_cls": False})
 kunci_ocr = threading.Lock()  # satu gambar diproses pada satu waktu agar model tidak dipakai bersamaan
+
+# Teks Korea (Hangul) tidak terbaca oleh model bawaan di atas, jadi bila bahasa asal = Korea dipakai model
+# pengenal khusus Korea (PP-OCRv5, ONNX). File modelnya (~13 MB) diunduh RapidOCR saat permintaan Korea
+# pertama, bukan saat server menyala, supaya pengguna yang tidak butuh Korea tidak perlu unduhan apa pun.
+# Pengenal sudut (use_cls) dimatikan: pada teks Korea ia membalik baris lurus 180 derajat sehingga hasilnya kacau
+# (diuji pada sampel Korea: dengan cls 5 dari 14 baris rusak, tanpa cls hampir semuanya benar).
+_mesin_ko = None
+
+
+def mesin(lang):
+    """Pilih (mesin OCR, pembaca ulang) menurut bahasa asal. Selain "ko" memakai model bawaan."""
+    global _mesin_ko
+    if lang != "ko":
+        return engine, pembaca
+    with kunci_ocr:
+        if _mesin_ko is None:
+            print("Memuat model OCR Korea... (pertama kali mengunduh model)")
+            korea = {"Global.log_level": "warning", "Rec.lang_type": LangRec.KOREAN,
+                     "Rec.model_type": ModelType.MOBILE, "Rec.ocr_version": OCRVersion.PPOCRV5}
+            _mesin_ko = (
+                RapidOCR(params={**korea, "Global.text_score": SKOR_SELAMATKAN, "Global.use_cls": False}),
+                RapidOCR(params={**korea, "Global.text_score": 0.0, "Global.use_det": False, "Global.use_cls": False}),
+            )
+    return _mesin_ko
 
 
 def decode_gambar(b64: str):
@@ -136,7 +161,7 @@ def cari_balon(img, lines):
     return lines
 
 
-def baca_ulang(img, x1, y1, x2, y2):
+def baca_ulang(pembaca, img, x1, y1, x2, y2):
     """Baca ulang satu baris yang skornya rendah. Contoh: teks di balon bergradasi/raster (screentone),
     di mana titik-titik raster mengganggu pembacaan. Potongan gambar dihaluskan dengan median blur
     (titik raster hilang, huruf tetap) lalu dibaca lagi. Hasil: (teks, skor) terbaik."""
@@ -153,9 +178,11 @@ def baca_ulang(img, x1, y1, x2, y2):
     return terbaik
 
 
-def baca_teks(img):
+def baca_teks(img, lang="auto"):
     """Jalankan OCR. Hasil: daftar baris teks dengan kotak [x, y, lebar, tinggi] dalam piksel,
-    ditambah "bubble" (kotak balon yang melingkupinya, atau None bila teks tidak di dalam balon)."""
+    ditambah "bubble" (kotak balon yang melingkupinya, atau None bila teks tidak di dalam balon).
+    lang = bahasa asal dari extension ("ko" memakai model Korea; lainnya model bawaan)."""
+    engine, pembaca = mesin(lang)
     with kunci_ocr:
         hasil = engine(img)  # hasil.boxes = 4 titik sudut per baris, hasil.txts = teks, hasil.scores = skor
     lines = []
@@ -167,7 +194,7 @@ def baca_teks(img):
         x, y = float(min(xs)), float(min(ys))
         if float(score) < MIN_SCORE:
             with kunci_ocr:
-                text, score = baca_ulang(img, int(x), int(y), int(max(xs)), int(max(ys)))
+                text, score = baca_ulang(pembaca, img, int(x), int(y), int(max(xs)), int(max(ys)))
             # Hasil baca ulang hanya dipakai bila yakin DAN berisi minimal 2 huruf (bukan "1", "m", "木").
             if score < MIN_SCORE or sum(ch.isalpha() for ch in text) < 2:
                 continue
@@ -208,7 +235,7 @@ class Handler(BaseHTTPRequestHandler):
             mulai = time.time()
             img = decode_gambar(body["image"])
             h, w = img.shape[:2]
-            lines = baca_teks(img)
+            lines = baca_teks(img, str(body.get("lang") or "auto"))
             ms = int((time.time() - mulai) * 1000)
             print(f"OCR {w}x{h}: {len(lines)} baris, {ms} ms")
             self._kirim(200, {"width": w, "height": h, "lines": lines, "ms": ms})

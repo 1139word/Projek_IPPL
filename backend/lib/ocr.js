@@ -4,14 +4,15 @@ class OcrError extends Error {
   constructor(code, message) { super(message); this.code = code; }
 }
 
-async function runOcr(imageBase64) {
+// lang = bahasa asal ('ko' memakai model Korea di layanan OCR; selain itu model bawaan).
+async function runOcr(imageBase64, lang = 'auto') {
   const url = process.env.OCR_URL || 'http://127.0.0.1:5001/ocr';
   let res;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageBase64 }),
+      body: JSON.stringify({ image: imageBase64, lang }),
       signal: AbortSignal.timeout(90000)
     });
   } catch (e) {

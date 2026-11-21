@@ -6,6 +6,7 @@ supaya perbaikan bisa dibandingkan dengan angka dan gambar, bukan hanya perasaan
 Menjalankan (dari folder ocr-service):
     venv\\Scripts\\python uji_ocr.py            -> hasil ke folder hasil\\
     venv\\Scripts\\python uji_ocr.py sebelum    -> hasil ke folder hasil\\sebelum\\ (untuk dibandingkan)
+    $env:OCR_LANG="ko"; venv\\Scripts\\python uji_ocr.py korea   -> memakai model Korea
 
 Isi folder hasil untuk setiap gambar:
     <nama>.png   gambar dengan kotak hijau (yakin) / oranye (ragu), nomor baris, dan kotak biru (balon)
@@ -14,6 +15,7 @@ Ringkasan semua gambar tertulis di ringkasan.txt.
 
 Folder sampel/ dan hasil/ tidak ikut ke Git (gambar komik berhak cipta).
 """
+import os
 import sys
 import time
 from pathlib import Path
@@ -26,6 +28,7 @@ from server import MIN_SCORE, baca_teks  # memakai fungsi OCR yang sama persis d
 FOLDER = Path(__file__).resolve().parent
 SAMPEL = FOLDER / "sampel"
 HASIL = FOLDER / "hasil" / (sys.argv[1] if len(sys.argv) > 1 else "")
+LANG = os.environ.get("OCR_LANG", "auto")  # bahasa asal, mis. OCR_LANG=ko untuk model Korea
 EKSTENSI = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
 
@@ -72,7 +75,7 @@ def main():
             print(f"- {path.name}: tidak bisa dibaca, dilewati")
             continue
         mulai = time.time()
-        lines = baca_teks(img)
+        lines = baca_teks(img, LANG)
         ms = int((time.time() - mulai) * 1000)
 
         simpan_gambar(HASIL / f"{path.stem}.png", gambar_kotak(img, lines))

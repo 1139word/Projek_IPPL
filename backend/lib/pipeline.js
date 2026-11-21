@@ -16,7 +16,7 @@ async function translateImage({ image, src = 'auto', tgt = 'en', model = DEFAULT
   if (!image || typeof image !== 'string') throw new PipelineError('BAD_REQUEST', 'Gambar tidak dikirim', 400);
 
   const t0 = Date.now();
-  const hasilOcr = await ocr(image);
+  const hasilOcr = await ocr(image, src);
   const t1 = Date.now();
 
   const groups = groupLines(hasilOcr.lines || []);

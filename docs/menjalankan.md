@@ -104,6 +104,6 @@ npm test
 Tes ini tidak memakai internet, API key, maupun MySQL (OCR, Gemini, DeepSeek, Google, dan database ditiru).
 
 ## Catatan
-- OCR saat ini memakai **RapidOCR** (model PaddleOCR versi ONNX) karena mudah dipasang. Model bawaannya paling baik untuk teks Inggris dan Mandarin; teks Jepang akan ditingkatkan setelah UTS.
+- OCR memakai **RapidOCR** (model PaddleOCR PP-OCRv6 format ONNX) yang membaca Jepang, Mandarin, dan Inggris. Teks **Korea** dibaca model khusus (PP-OCRv5 Korea) yang dipakai hanya bila **bahasa asal** di popup dipilih Korea; di mode Auto, teks Korea tidak terbaca. File model Korea (~13 MB) diunduh otomatis pada permintaan Korea pertama (butuh internet, sekali saja), jadi permintaan itu lebih lama.
 - Sudah ada: login Google (wajib sebelum menerjemahkan), sistem credit tanpa status Free atau Premium (akun baru 10 credit, tidak direset dan tidak kedaluwarsa, dipotong hanya bila terjemahan berhasil), serta paket credit di tabel `credit_packages` yang dibeli lewat QRIS. Popup menampilkan saldo credit dan daftar paket, dan halaman Beli Credit (`beli.html`) dipakai untuk membayar.
 - Situs yang memblokir unduhan gambar (Pixiv, MANGA Plus) diterjemahkan lewat **potret layar**, jadi hanya bagian gambar yang sedang terlihat yang terbaca. Setelah menggulir, arahkan kursor ke gambar lagi: tombol terjemah muncul kembali untuk bagian yang belum diterjemahkan, dan hasilnya digabung dengan hasil sebelumnya.
