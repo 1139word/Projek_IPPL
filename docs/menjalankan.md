@@ -104,6 +104,15 @@ npm test
 Tes ini tidak memakai internet, API key, maupun MySQL (OCR, Gemini, DeepSeek, Google, dan database ditiru).
 
 ## Catatan
-- OCR memakai **RapidOCR** (model PaddleOCR PP-OCRv6 format ONNX) yang membaca Jepang, Mandarin, dan Inggris. Teks **Korea** dibaca model khusus (PP-OCRv5 Korea) yang dipakai hanya bila **bahasa asal** di popup dipilih Korea; di mode Auto, teks Korea tidak terbaca. File model Korea (~13 MB) diunduh otomatis pada permintaan Korea pertama (butuh internet, sekali saja), jadi permintaan itu lebih lama.
+- OCR memakai **RapidOCR** (model PaddleOCR format ONNX). Model bawaan (PP-OCRv6 multi) membaca Jepang, Mandarin (Sederhana dan Tradisional), Inggris, dan huruf Latin (Indonesia, Spanyol, Prancis, Jerman, dan lain-lain). Tiga bahasa lain dibaca model pengenal khusus (PP-OCRv5) yang dipakai **hanya bila Bahasa asal di popup dipilih bahasa itu**:
+
+  | Bahasa asal | Model | Ukuran unduhan |
+  |---|---|---|
+  | Korea | `korean_PP-OCRv5_rec_mobile` | ~13 MB |
+  | Rusia | `eslav_PP-OCRv5_rec_mobile` | ~7,5 MB |
+  | Thailand | `th_PP-OCRv5_rec_mobile` | ~7,5 MB |
+
+  Di mode **Auto**, Korea, Rusia, dan Thailand tidak terbaca (hasilnya huruf acak); pilih bahasanya di popup. Model tiap bahasa diunduh otomatis pada permintaan pertama bahasa itu (butuh internet, sekali saja), jadi permintaan itu lebih lama. Tabelnya ada di `MODEL_BAHASA` di `ocr-service/server.py`.
+- **Keterbatasan, Vietnam:** tetap ada di daftar Bahasa asal dan memakai model bawaan, tetapi hasilnya kurang: kamus model itu tidak memuat 44 dari 67 huruf Vietnam yang bertanda tambahan (misalnya ạ, ả, ể, ệ, ợ, ử, ự), sehingga huruf-huruf itu hilang dari hasil OCR (contoh: "Bạn đang ở đâu vậy?" terbaca "Bn đang  đâu vy?"). Model Latin PP-OCRv5 lebih buruk (kamusnya lebih kecil). Bahasa Latin lain (Spanyol, Prancis, Jerman, Indonesia) hanya salah pada tanda baca seperti "¡"; huruf beraksennya terbaca benar pada uji sintetis.
 - Sudah ada: login Google (wajib sebelum menerjemahkan), sistem credit tanpa status Free atau Premium (akun baru 10 credit, tidak direset dan tidak kedaluwarsa, dipotong hanya bila terjemahan berhasil), serta paket credit di tabel `credit_packages` yang dibeli lewat QRIS. Popup menampilkan saldo credit dan daftar paket, dan halaman Beli Credit (`beli.html`) dipakai untuk membayar.
 - Situs yang memblokir unduhan gambar (Pixiv, MANGA Plus) diterjemahkan lewat **potret layar**, jadi hanya bagian gambar yang sedang terlihat yang terbaca. Setelah menggulir, arahkan kursor ke gambar lagi: tombol terjemah muncul kembali untuk bagian yang belum diterjemahkan, dan hasilnya digabung dengan hasil sebelumnya.

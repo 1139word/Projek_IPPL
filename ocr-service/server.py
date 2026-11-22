@@ -8,7 +8,7 @@ PP-OCRv6 small. Model ini membaca Mandarin, Inggris, dan Jepang (termasuk teks v
 dalam satu model, dan sudah ikut terpasang bersama paket pip, jadi tidak perlu unduh terpisah.
 Sebelumnya (rapidocr_onnxruntime 1.x, PP-OCRv4) huruf kana Jepang tidak terbaca (masalah M4).
 Bila suatu saat model diganti lagi, cukup ubah fungsi `baca_teks`; bentuk jawabannya harus tetap sama.
-Permintaan boleh membawa "lang" (bahasa asal); "ko" memakai model pengenal Korea (lihat `mesin`).
+Permintaan boleh membawa "lang" (bahasa asal); "ko", "ru", dan "th" memakai model pengenal sendiri (lihat `MODEL_BAHASA`).
 
 Menjalankan:  python server.py
 Alamat:       http://127.0.0.1:5001/ocr   (POST)   dan   /health   (GET)
@@ -36,29 +36,39 @@ pembaca = RapidOCR(params={"Global.log_level": "warning", "Global.text_score": 0
                            "Global.use_det": False, "Global.use_cls": False})
 kunci_ocr = threading.Lock()  # satu gambar diproses pada satu waktu agar model tidak dipakai bersamaan
 
-# Teks Korea (Hangul) tidak terbaca oleh model bawaan di atas, jadi bila bahasa asal = Korea dipakai model
-# pengenal khusus Korea (PP-OCRv5, ONNX). File modelnya (~13 MB) diunduh RapidOCR saat permintaan Korea
-# pertama, bukan saat server menyala, supaya pengguna yang tidak butuh Korea tidak perlu unduhan apa pun.
-# Pengenal sudut (use_cls) dimatikan: pada teks Korea ia membalik baris lurus 180 derajat sehingga hasilnya kacau
-# (diuji pada sampel Korea: dengan cls 5 dari 14 baris rusak, tanpa cls hampir semuanya benar).
-_mesin_ko = None
+# Model bawaan di atas (PP-OCRv6 small, multi) membaca Mandarin, Jepang, Inggris, dan huruf Latin (Indonesia, Spanyol,
+# Prancis, Jerman, dst.; Vietnam hanya sebagian, lihat docs/menjalankan.md). Tiga bahasa lain butuh model pengenal sendiri (PP-OCRv5, ONNX): Hangul, Cyrillic
+# (Rusia), dan huruf Thai. Tabel ini memetakan kode bahasa asal dari popup ke model itu:
+#   kode -> (nama untuk log, LangRec, use_cls)
+# File model (7 sampai 13 MB per bahasa) diunduh RapidOCR saat permintaan bahasa itu muncul pertama kali, bukan saat server
+# menyala, supaya pengguna yang tidak butuh bahasa tersebut tidak perlu unduhan apa pun. Kode lain memakai model bawaan.
+# use_cls = pengenal sudut baris (0/180 derajat); semuanya dimatikan. Pada Korea ia membalik baris lurus 180 derajat
+# sehingga hasilnya kacau (sampel Korea: dengan cls 5 dari 14 baris rusak, tanpa cls hampir semuanya benar). Pada Thai
+# (uji sintetis, 4 baris): dengan cls 3 baris rusak, tanpa cls 4 dari 4 persis. Pada Rusia hasilnya sama (4 dari 4),
+# jadi dimatikan juga agar seragam dan lebih cepat.
+MODEL_BAHASA = {
+    "ko": ("Korea", LangRec.KOREAN, False),
+    "ru": ("Rusia", LangRec.ESLAV, False),
+    "th": ("Thailand", LangRec.TH, False),
+}
+_mesin_bahasa = {}  # kode -> (mesin, pembaca ulang); diisi saat permintaan pertama bahasa itu
 
 
 def mesin(lang):
-    """Pilih (mesin OCR, pembaca ulang) menurut bahasa asal. Selain "ko" memakai model bawaan."""
-    global _mesin_ko
-    if lang != "ko":
+    """Pilih (mesin OCR, pembaca ulang) menurut bahasa asal. Kode yang tidak ada di MODEL_BAHASA memakai model bawaan."""
+    if lang not in MODEL_BAHASA:
         return engine, pembaca
     with kunci_ocr:
-        if _mesin_ko is None:
-            print("Memuat model OCR Korea... (pertama kali mengunduh model)")
-            korea = {"Global.log_level": "warning", "Rec.lang_type": LangRec.KOREAN,
+        if lang not in _mesin_bahasa:
+            nama, jenis, pakai_cls = MODEL_BAHASA[lang]
+            print(f"Memuat model OCR {nama}... (pertama kali mengunduh model)")
+            dasar = {"Global.log_level": "warning", "Rec.lang_type": jenis,
                      "Rec.model_type": ModelType.MOBILE, "Rec.ocr_version": OCRVersion.PPOCRV5}
-            _mesin_ko = (
-                RapidOCR(params={**korea, "Global.text_score": SKOR_SELAMATKAN, "Global.use_cls": False}),
-                RapidOCR(params={**korea, "Global.text_score": 0.0, "Global.use_det": False, "Global.use_cls": False}),
+            _mesin_bahasa[lang] = (
+                RapidOCR(params={**dasar, "Global.text_score": SKOR_SELAMATKAN, "Global.use_cls": pakai_cls}),
+                RapidOCR(params={**dasar, "Global.text_score": 0.0, "Global.use_det": False, "Global.use_cls": False}),
             )
-    return _mesin_ko
+    return _mesin_bahasa[lang]
 
 
 def decode_gambar(b64: str):
@@ -181,7 +191,7 @@ def baca_ulang(pembaca, img, x1, y1, x2, y2):
 def baca_teks(img, lang="auto"):
     """Jalankan OCR. Hasil: daftar baris teks dengan kotak [x, y, lebar, tinggi] dalam piksel,
     ditambah "bubble" (kotak balon yang melingkupinya, atau None bila teks tidak di dalam balon).
-    lang = bahasa asal dari extension ("ko" memakai model Korea; lainnya model bawaan)."""
+    lang = bahasa asal dari extension ("ko", "ru", "th" memakai model sendiri; lainnya model bawaan)."""
     engine, pembaca = mesin(lang)
     with kunci_ocr:
         hasil = engine(img)  # hasil.boxes = 4 titik sudut per baris, hasil.txts = teks, hasil.scores = skor

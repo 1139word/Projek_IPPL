@@ -6,7 +6,12 @@ supaya perbaikan bisa dibandingkan dengan angka dan gambar, bukan hanya perasaan
 Menjalankan (dari folder ocr-service):
     venv\\Scripts\\python uji_ocr.py            -> hasil ke folder hasil\\
     venv\\Scripts\\python uji_ocr.py sebelum    -> hasil ke folder hasil\\sebelum\\ (untuk dibandingkan)
-    $env:OCR_LANG="ko"; venv\\Scripts\\python uji_ocr.py korea   -> memakai model Korea
+    $env:OCR_LANG="ko"; venv\\Scripts\\python uji_ocr.py korea   -> semua gambar dibaca dengan bahasa asal Korea
+
+Bahasa asal tiap gambar: OCR_LANG bila diisi (berlaku untuk semua gambar); bila tidak, diambil dari awalan nama file
+(kode bahasa popup + "_" atau "-", huruf besar kecil bebas), misalnya th_bab1.png, ru_hal3.png, zh-TW_a.png, ko-02.jpg.
+File tanpa awalan itu (misalnya 145311187_p3.png) dibaca sebagai "auto" (model bawaan). Dengan begitu satu folder
+berisi komik beberapa bahasa bisa diuji sekali jalan, dan bahasanya tercetak di ringkasan.
 
 Isi folder hasil untuk setiap gambar:
     <nama>.png   gambar dengan kotak hijau (yakin) / oranye (ragu), nomor baris, dan kotak biru (balon)
@@ -16,6 +21,7 @@ Ringkasan semua gambar tertulis di ringkasan.txt.
 Folder sampel/ dan hasil/ tidak ikut ke Git (gambar komik berhak cipta).
 """
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -28,8 +34,18 @@ from server import MIN_SCORE, baca_teks  # memakai fungsi OCR yang sama persis d
 FOLDER = Path(__file__).resolve().parent
 SAMPEL = FOLDER / "sampel"
 HASIL = FOLDER / "hasil" / (sys.argv[1] if len(sys.argv) > 1 else "")
-LANG = os.environ.get("OCR_LANG", "auto")  # bahasa asal, mis. OCR_LANG=ko untuk model Korea
+LANG = os.environ.get("OCR_LANG", "")  # bahasa asal untuk SEMUA gambar, mis. OCR_LANG=ko; kosong = dari awalan nama file
+KODE_BAHASA = ["zh-CN", "zh-TW", "ja", "en", "id", "ko", "es", "fr", "de", "ru", "th", "vi"]  # sama dengan LANGS di popup.js
+AWALAN = re.compile(r"^(" + "|".join(KODE_BAHASA) + r")[_-]", re.IGNORECASE)
 EKSTENSI = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+
+
+def bahasa_dari_nama(nama: str) -> str:
+    """Kode bahasa dari awalan nama file (th_a.png -> "th"); "auto" bila tidak ada awalan yang dikenal."""
+    m = AWALAN.match(nama)
+    if not m:
+        return "auto"
+    return next(k for k in KODE_BAHASA if k.lower() == m.group(1).lower())
 
 
 def baca_gambar(path: Path):
@@ -75,7 +91,8 @@ def main():
             print(f"- {path.name}: tidak bisa dibaca, dilewati")
             continue
         mulai = time.time()
-        lines = baca_teks(img, LANG)
+        bhs = LANG or bahasa_dari_nama(path.name)
+        lines = baca_teks(img, bhs)
         ms = int((time.time() - mulai) * 1000)
 
         simpan_gambar(HASIL / f"{path.stem}.png", gambar_kotak(img, lines))
@@ -85,7 +102,7 @@ def main():
 
         rata = sum(ln["score"] for ln in lines) / len(lines) if lines else 0
         dlm_balon = sum(1 for ln in lines if ln.get("bubble"))
-        baris = f"{path.name}: {len(lines)} baris ({dlm_balon} di dalam balon), skor rata-rata {rata:.3f}, {ms} ms"
+        baris = f"{path.name} [{bhs}]: {len(lines)} baris ({dlm_balon} di dalam balon), skor rata-rata {rata:.3f}, {ms} ms"
         print(baris)
         ringkasan.append(baris)
 
